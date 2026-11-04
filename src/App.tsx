@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
-import { supabaseMissingConfig } from './lib/supabase'
+import { missingVars, supabaseMissingConfig } from './lib/supabase'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Privacidad from './pages/Privacidad'
@@ -12,9 +12,8 @@ export default function App() {
     return (
       <main className="screen center">
         <h1>Falta configurar Supabase</h1>
-        <p className="muted">
-          Definí VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver README).
-        </p>
+        <p className="muted">Faltan estas variables en Vercel: {missingVars.join(' y ')}.</p>
+        <p className="muted">Versión publicada: {__BUILD_ID__}</p>
       </main>
     )
   }
