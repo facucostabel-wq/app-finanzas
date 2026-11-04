@@ -1,12 +1,15 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
+import { usePerfil } from './lib/perfil'
 import { missingVars, supabaseMissingConfig } from './lib/supabase'
+import Consentimiento from './pages/Consentimiento'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Privacidad from './pages/Privacidad'
 
 export default function App() {
   const { session, loading } = useAuth()
+  const { perfil, loading: perfilLoading } = usePerfil()
 
   if (supabaseMissingConfig) {
     return (
@@ -18,15 +21,21 @@ export default function App() {
     )
   }
 
-  if (loading) {
+  if (loading || (session && perfilLoading)) {
     return <main className="screen center muted">Cargando…</main>
   }
+
+  // Logueado pero sin consentimiento registrado (p. ej. primera vez con Google).
+  const faltaConsentimiento = session && !perfil?.consentimiento_at
 
   return (
     <Routes>
       <Route path="/privacidad" element={<Privacidad />} />
       <Route path="/ingresar" element={session ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/" element={session ? <Home /> : <Navigate to="/ingresar" replace />} />
+      <Route
+        path="/"
+        element={!session ? <Navigate to="/ingresar" replace /> : faltaConsentimiento ? <Consentimiento /> : <Home />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

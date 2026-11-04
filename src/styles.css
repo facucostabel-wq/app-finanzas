@@ -98,6 +98,40 @@ button.primary {
 button.primary:disabled { opacity: 0.6; }
 button.link { background: none; border: 0; color: var(--accent); font-size: 1rem; padding: 8px; }
 
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 0.95rem; }
+.password { position: relative; display: flex; }
+.password input { flex: 1; padding-right: 48px; }
+.ojo {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 0;
+  color: var(--muted);
+  padding: 8px;
+  display: flex;
+}
+.reglas { list-style: none; margin: 2px 0 0; padding: 0; font-size: 0.85rem; color: var(--muted); }
+.reglas li { margin: 2px 0; }
+.reglas li.ok { color: var(--accent); }
+
+button.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.separador { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.85rem; }
+.separador::before, .separador::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
 .error { color: var(--error); margin: 0; }
 .info { color: var(--info); margin: 0; }
 

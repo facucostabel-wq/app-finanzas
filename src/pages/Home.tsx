@@ -1,19 +1,11 @@
-import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 
 export default function Home() {
   const { session } = useAuth()
-  const [nombre, setNombre] = useState<string | null>(null)
-
-  useEffect(() => {
-    // Lee el perfil propio: la política RLS impide leer el de cualquier otro usuario.
-    supabase
-      .from('perfiles')
-      .select('nombre')
-      .single()
-      .then(({ data }) => setNombre(data?.nombre ?? null))
-  }, [])
+  const { perfil } = usePerfil()
+  const nombre = perfil?.nombre?.split(' ')[0]
 
   return (
     <main className="screen">
