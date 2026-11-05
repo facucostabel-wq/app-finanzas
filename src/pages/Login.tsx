@@ -6,6 +6,8 @@ type Mode = 'ingresar' | 'registrarse'
 
 export const MIN_PASSWORD = 10
 const TIMEOUT_MS = 20000
+// Google queda oculto hasta configurar las credenciales (activar con VITE_HABILITAR_GOOGLE=true en Vercel).
+const GOOGLE_HABILITADO = import.meta.env.VITE_HABILITAR_GOOGLE === 'true'
 
 /** Evita que la pantalla quede colgada en "Un momento…" si el servidor no responde. */
 function conTimeout<T>(promesa: Promise<T>): Promise<T> {
@@ -131,12 +133,16 @@ export default function Login() {
       </div>
 
       <form className="card" onSubmit={onSubmit}>
-        <button type="button" className="google" onClick={conGoogle} disabled={busy}>
-          <IconoGoogle /> Continuar con Google
-        </button>
-        <div className="separador">
-          <span>o con tu email</span>
-        </div>
+        {GOOGLE_HABILITADO && (
+          <>
+            <button type="button" className="google" onClick={conGoogle} disabled={busy}>
+              <IconoGoogle /> Continuar con Google
+            </button>
+            <div className="separador">
+              <span>o con tu email</span>
+            </div>
+          </>
+        )}
 
         {registrarse && (
           <label>
