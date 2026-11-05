@@ -234,3 +234,26 @@ button.link-texto { background: none; border: 0; color: var(--text); font-size: 
 .hoja-cabecera h2 { margin: 0; }
 .lista-monedas { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
 .lista-monedas button { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--border); padding: 12px 4px; color: var(--text); font-size: 1rem; }
+
+/* ---------- Lista desplegable con buscador ---------- */
+.combo { display: flex; flex-direction: column; gap: 6px; position: relative; scroll-margin-top: 12px; }
+.combo-campo { position: relative; display: flex; align-items: center; }
+.combo-campo input { flex: 1; padding-right: 40px; cursor: pointer; }
+.combo-detalle {
+  position: absolute; right: 40px; color: var(--muted); font-size: 0.85rem; pointer-events: none;
+  max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.combo-flecha { position: absolute; right: 14px; color: var(--muted); pointer-events: none; }
+.combo-lista {
+  list-style: none; margin: 0; padding: 4px; max-height: 240px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.combo-grupo { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px 10px 4px; }
+.combo-opcion { display: flex; gap: 8px; align-items: baseline; padding: 11px 10px; border-radius: 8px; cursor: pointer; }
+.combo-opcion .muted { font-size: 0.85rem; }
+.combo-opcion.activa, .combo-opcion:hover { background: var(--bg); }
+.combo-opcion[aria-selected='true'] { font-weight: 600; }
+.combo-check { margin-left: auto; color: var(--accent); }
+.combo-opcion.crear { color: var(--accent); font-weight: 600; }
+.combo-vacio { padding: 10px; }

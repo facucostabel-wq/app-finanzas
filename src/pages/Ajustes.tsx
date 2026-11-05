@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
-import SelectorMoneda from '../components/SelectorMoneda'
+import Combobox from '../components/Combobox'
 import { useAuth } from '../lib/auth'
 import { useCategorias, type Categoria, type TipoCategoria } from '../lib/datos'
-import { nombreMoneda } from '../lib/monedas'
+import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 
@@ -20,7 +20,6 @@ export default function Ajustes() {
   const { categorias, recargar } = useCategorias()
   const [tipo, setTipo] = useState<TipoCategoria>('gasto')
   const [nueva, setNueva] = useState('')
-  const [agregandoMoneda, setAgregandoMoneda] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const favoritas = perfil?.monedas_favoritas ?? []
 
@@ -108,9 +107,17 @@ export default function Ajustes() {
           ))}
         </ul>
         {favoritas.length < 10 && (
-          <button className="link" onClick={() => setAgregandoMoneda(true)}>
-            + Agregar moneda
-          </button>
+          <Combobox
+            etiqueta="Agregar moneda"
+            opciones={MONEDAS.filter((m) => !favoritas.includes(m.codigo)).map((m) => ({
+              valor: m.codigo,
+              texto: m.codigo,
+              detalle: m.nombre,
+            }))}
+            valor={null}
+            onCambio={(c) => guardarFavoritas([...favoritas, c])}
+            placeholder="Buscar: real, BRL, libra…"
+          />
         )}
       </section>
 
@@ -165,16 +172,6 @@ export default function Ajustes() {
         </button>
       </section>
 
-      {agregandoMoneda && (
-        <SelectorMoneda
-          excluir={favoritas}
-          onElegir={(c) => {
-            setAgregandoMoneda(false)
-            guardarFavoritas([...favoritas, c])
-          }}
-          onCerrar={() => setAgregandoMoneda(false)}
-        />
-      )}
       <BottomNav />
     </main>
   )

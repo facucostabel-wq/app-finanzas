@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import SelectorMoneda from '../components/SelectorMoneda'
+import Combobox, { type Opcion } from '../components/Combobox'
 import {
   FORMAS_PAGO,
   obtenerMovimiento,
@@ -10,6 +10,7 @@ import {
   type TipoMovimiento,
 } from '../lib/datos'
 import { hoyISO, montoAEditable, parseMonto } from '../lib/format'
+import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 
@@ -20,7 +21,7 @@ export default function MovimientoForm() {
   const editando = Boolean(id)
   const navigate = useNavigate()
   const { perfil } = usePerfil()
-  const { categorias, loading: cargandoCategorias } = useCategorias()
+  const { categorias, loading: cargandoCategorias, recargar: recargarCategorias } = useCategorias()
   const favoritas = perfil?.monedas_favoritas ?? ['ARS']
 
   const [tipo, setTipo] = useState<TipoPantalla>('gasto')
@@ -31,7 +32,6 @@ export default function MovimientoForm() {
   const [formaPago, setFormaPago] = useState<FormaPago | null>(null)
   const [fecha, setFecha] = useState(hoyISO())
   const [nota, setNota] = useState('')
-  const [buscandoMoneda, setBuscandoMoneda] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(editando)
@@ -61,8 +61,32 @@ export default function MovimientoForm() {
     (c) => c.tipo === tipoCategoriaDe(tipoMovimiento) && (c.activa || c.id === categoriaId),
   )
   const monto = parseMonto(montoTexto)
-  // Botones de moneda: favoritas + la elegida si no es favorita.
-  const botonesMoneda = favoritas.includes(moneda) ? favoritas : [...favoritas, moneda]
+  // Monedas: primero las favoritas, después el resto.
+  const opcionesMoneda: Opcion[] = [
+    ...favoritas.map((c) => ({ valor: c, texto: c, detalle: nombreMoneda(c), grupo: 'Favoritas' })),
+    ...MONEDAS.filter((m) => !favoritas.includes(m.codigo)).map((m) => ({
+      valor: m.codigo,
+      texto: m.codigo,
+      detalle: m.nombre,
+      grupo: 'Todas las monedas',
+    })),
+  ]
+  const opcionesCategoria: Opcion[] = visibles.map((c) => ({ valor: c.id, texto: c.nombre }))
+  const opcionesFormaPago: Opcion[] = FORMAS_PAGO.map((f) => ({ valor: f.valor, texto: f.texto }))
+
+  async function crearCategoria(nombre: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('categorias')
+      .insert({ tipo: tipoCategoriaDe(tipoMovimiento), nombre })
+      .select('id')
+      .single()
+    if (error) {
+      setError(error.code === '23505' ? 'Ya existe una categoría con ese nombre (puede estar oculta en Ajustes).' : error.message)
+      return null
+    }
+    await recargarCategorias()
+    return data.id as string
+  }
 
   function cambiarTipo(t: TipoPantalla) {
     setTipo(t)
@@ -155,55 +179,32 @@ export default function MovimientoForm() {
           />
         </label>
 
-        <div className="grupo">
-          <span className="grupo-titulo">Moneda</span>
-          <div className="chips">
-            {botonesMoneda.map((m) => (
-              <button type="button" key={m} className="chip" aria-pressed={moneda === m} onClick={() => setMoneda(m)}>
-                {m}
-              </button>
-            ))}
-            <button type="button" className="chip" onClick={() => setBuscandoMoneda(true)}>
-              Otra…
-            </button>
-          </div>
-        </div>
+        <Combobox
+          etiqueta="Moneda"
+          opciones={opcionesMoneda}
+          valor={moneda}
+          onCambio={setMoneda}
+          placeholder="Buscar: dólar, real, EUR…"
+        />
 
-        <div className="grupo">
-          <span className="grupo-titulo">Categoría</span>
-          <div className="chips">
-            {visibles.map((c) => (
-              <button
-                type="button"
-                key={c.id}
-                className="chip"
-                aria-pressed={categoriaId === c.id}
-                onClick={() => setCategoriaId(c.id)}
-              >
-                {c.nombre}
-              </button>
-            ))}
-            {visibles.length === 0 && <span className="muted">No hay categorías activas de este tipo (ver Ajustes).</span>}
-          </div>
-        </div>
+        <Combobox
+          etiqueta="Categoría"
+          opciones={opcionesCategoria}
+          valor={categoriaId}
+          onCambio={setCategoriaId}
+          placeholder="Buscar o crear categoría…"
+          onCrear={crearCategoria}
+          textoVacio="No hay categorías activas de este tipo."
+        />
 
         {tipo === 'gasto' && (
-          <div className="grupo">
-            <span className="grupo-titulo">Forma de pago</span>
-            <div className="chips">
-              {FORMAS_PAGO.map((f) => (
-                <button
-                  type="button"
-                  key={f.valor}
-                  className="chip"
-                  aria-pressed={formaPago === f.valor}
-                  onClick={() => setFormaPago(f.valor)}
-                >
-                  {f.texto}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Combobox
+            etiqueta="Forma de pago"
+            opciones={opcionesFormaPago}
+            valor={formaPago}
+            onCambio={(v) => setFormaPago(v as FormaPago)}
+            placeholder="Buscar forma de pago…"
+          />
         )}
 
         <label>
@@ -228,15 +229,6 @@ export default function MovimientoForm() {
         )}
       </form>
 
-      {buscandoMoneda && (
-        <SelectorMoneda
-          onElegir={(c) => {
-            setMoneda(c)
-            setBuscandoMoneda(false)
-          }}
-          onCerrar={() => setBuscandoMoneda(false)}
-        />
-      )}
     </main>
   )
 }
