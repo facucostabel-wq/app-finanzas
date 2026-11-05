@@ -136,3 +136,101 @@ button.google {
 .info { color: var(--info); margin: 0; }
 
 .prose h2 { margin-top: 20px; }
+
+/* ---------- Etapa 2 ---------- */
+.screen.con-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.screen > .card + .card, .screen > .card + section, .screen > section + section { margin-top: 14px; }
+.chico { font-size: 0.85rem; }
+.titulo-chico { font-size: 1.1rem; margin: 0; }
+
+.bottomnav {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+.bottomnav a {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--muted); text-decoration: none; font-size: 0.75rem; padding: 6px 0;
+}
+.bottomnav a.active { color: var(--accent); font-weight: 600; }
+.fab {
+  position: fixed; right: max(18px, calc(50% - 222px)); bottom: calc(76px + env(safe-area-inset-bottom));
+  width: 60px; height: 60px; border-radius: 50%; border: 0;
+  background: var(--accent); color: var(--accent-text);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18); z-index: 11;
+}
+
+.selector-mes { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 14px; }
+.selector-mes span { font-weight: 600; font-size: 1.05rem; }
+.selector-mes button {
+  width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 1.4rem; line-height: 1;
+}
+.selector-mes button:disabled { opacity: .35; }
+
+.totales { margin: 0; display: grid; gap: 10px; }
+.totales div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.totales dt { color: var(--muted); }
+.totales dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+.totales .destacado { border-top: 1px solid var(--border); padding-top: 10px; }
+.totales .destacado dd { font-size: 1.25rem; }
+.negativo { color: var(--error); }
+
+.titulo-con-accion { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.titulo-con-accion h2 { margin: 0; }
+.barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.barra-etiqueta { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92rem; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.barra-pista { height: 8px; }
+.barra { height: 8px; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+
+.vacio { align-items: center; text-align: center; }
+a.boton { text-decoration: none; display: inline-block; text-align: center; }
+a.primary { background: var(--accent); color: var(--accent-text); border-radius: 10px; padding: 12px 18px; font-weight: 600; }
+
+.dia-titulo { font-size: 0.85rem; color: var(--muted); font-weight: 600; margin: 14px 4px 6px; }
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista.card { padding: 0 14px; gap: 0; }
+.lista > li + li { border-top: 1px solid var(--border); }
+.fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; color: var(--text); text-decoration: none; }
+.fila.inactiva { opacity: .5; }
+.monto { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.monto.ingreso, .monto.rescate { color: var(--accent); }
+
+.segmentado { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 3px; }
+.segmentado button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 10px 6px; border-radius: 8px; font-size: 0.95rem; }
+.segmentado button[aria-pressed='true'] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.segmentado.chico button { padding: 7px 6px; font-size: 0.85rem; }
+
+.formulario .monto-input { font-size: 1.8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.formulario .monto-input[aria-invalid='true'] { outline: 2px solid var(--error); }
+.grupo { display: flex; flex-direction: column; gap: 6px; }
+.grupo-titulo { font-size: 0.95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 999px; padding: 8px 14px; font-size: 0.92rem; }
+.chip[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.peligro { background: none; border: 1px solid var(--error); color: var(--error); border-radius: 10px; padding: 12px; font-size: 1rem; }
+button.secundario { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 12px; font-size: 1rem; }
+
+.acciones { display: flex; gap: 4px; }
+button.icono { width: 36px; height: 36px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; }
+button.icono:disabled { opacity: .35; }
+button.link-texto { background: none; border: 0; color: var(--text); font-size: 1rem; padding: 0; text-align: left; }
+.interruptor { flex-direction: row; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.interruptor input { width: 18px; height: 18px; }
+.agregar { display: flex; gap: 8px; }
+.agregar input { flex: 1; min-width: 0; }
+.agregar .primary { padding: 0 16px; }
+
+.hoja-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+.hoja {
+  background: var(--surface); width: 100%; max-width: 480px; max-height: 80dvh;
+  border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 10px;
+}
+.hoja-cabecera { display: flex; justify-content: space-between; align-items: center; }
+.hoja-cabecera h2 { margin: 0; }
+.lista-monedas { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+.lista-monedas button { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--border); padding: 12px 4px; color: var(--text); font-size: 1rem; }

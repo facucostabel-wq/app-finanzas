@@ -8,7 +8,7 @@ Cada usuario ve solo sus movimientos; la separación la impone la base de datos 
 ## Estado
 
 - [x] Etapa 1 — Setup: login con email, perfil con consentimiento, app instalable.
-- [ ] Etapa 2 — Personal básico: categorías, alta rápida, movimientos, resumen mensual.
+- [x] Etapa 2 — Personal básico: categorías, alta rápida, movimientos, resumen mensual, monedas favoritas.
 - [ ] Etapa 3 — Tarjetas, cuotas, conciliación y USD (MEP de cierre).
 - [ ] Etapa 4 — Grupos.
 - [ ] Etapa 5 — Seguridad y legal: 2FA, Google, política final, exportar y borrar cuenta.

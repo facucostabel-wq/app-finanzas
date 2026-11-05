@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { useAuth } from './auth'
 import { supabase } from './supabase'
 
-export type Perfil = { nombre: string; consentimiento_at: string | null }
+export const MONEDAS_POR_DEFECTO = ['ARS', 'USD', 'EUR']
+
+export type Perfil = { nombre: string; consentimiento_at: string | null; monedas_favoritas: string[] }
 
 type PerfilState = { perfil: Perfil | null; loading: boolean; recargar: () => Promise<void> }
 
@@ -22,8 +24,26 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true)
     // RLS garantiza que esta consulta solo puede devolver el perfil propio.
-    const { data } = await supabase.from('perfiles').select('nombre, consentimiento_at').eq('id', userId).maybeSingle()
-    setPerfil(data ?? null)
+    const completo = await supabase
+      .from('perfiles')
+      .select('nombre, consentimiento_at, monedas_favoritas')
+      .eq('id', userId)
+      .maybeSingle()
+    let data: Partial<Perfil> | null = completo.data
+    if (completo.error) {
+      // Compatibilidad: base sin la columna de monedas (migración 0003 pendiente).
+      const basico = await supabase.from('perfiles').select('nombre, consentimiento_at').eq('id', userId).maybeSingle()
+      data = basico.data
+    }
+    setPerfil(
+      data
+        ? {
+            nombre: data.nombre ?? '',
+            consentimiento_at: data.consentimiento_at ?? null,
+            monedas_favoritas: data.monedas_favoritas?.length ? data.monedas_favoritas : MONEDAS_POR_DEFECTO,
+          }
+        : null,
+    )
     setLoading(false)
   }, [userId])
 
