@@ -5,6 +5,17 @@ import { supabase } from '../lib/supabase'
 type Mode = 'ingresar' | 'registrarse'
 
 export const MIN_PASSWORD = 10
+const TIMEOUT_MS = 20000
+
+/** Evita que la pantalla quede colgada en "Un momento…" si el servidor no responde. */
+function conTimeout<T>(promesa: Promise<T>): Promise<T> {
+  return Promise.race([
+    promesa,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS),
+    ),
+  ])
+}
 
 /** Reglas de contraseña que se muestran en vivo al crear la cuenta. */
 const REGLAS: { texto: string; cumple: (p: string) => boolean }[] = [
@@ -41,19 +52,21 @@ export default function Login() {
     setBusy(true)
     try {
       if (mode === 'ingresar') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { error } = await conTimeout(supabase.auth.signInWithPassword({ email, password }))
         if (error) throw error
       } else {
         if (!passwordValida) throw new Error('La contraseña no cumple los requisitos.')
         if (!acepta) throw new Error('Para crear la cuenta tenés que aceptar la política de privacidad.')
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { nombre: nombre.trim(), consentimiento_at: new Date().toISOString() },
-          },
-        })
+        const { error } = await conTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: window.location.origin,
+              data: { nombre: nombre.trim(), consentimiento_at: new Date().toISOString() },
+            },
+          }),
+        )
         if (error) throw error
         setEmailEnviado(email)
         setInfo(`Te enviamos un email a ${email} para confirmar la cuenta. Revisá también la carpeta de spam.`)
@@ -83,14 +96,21 @@ export default function Login() {
     if (!emailEnviado) return
     setError(null)
     setBusy(true)
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: emailEnviado,
-      options: { emailRedirectTo: window.location.origin },
-    })
-    setBusy(false)
-    if (error) setError(traducirError(error))
-    else setInfo(`Reenviamos el email a ${emailEnviado}.`)
+    try {
+      const { error } = await conTimeout(
+        supabase.auth.resend({
+          type: 'signup',
+          email: emailEnviado,
+          options: { emailRedirectTo: window.location.origin },
+        }),
+      )
+      if (error) throw error
+      setInfo(`Reenviamos el email a ${emailEnviado}.`)
+    } catch (err) {
+      setError(traducirError(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -195,9 +215,13 @@ export default function Login() {
 function traducirError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err)
   const code = (err as { code?: string })?.code ?? ''
+  if (msg === 'timeout')
+    return 'El servidor no respondió a tiempo (20 s). Revisá tu conexión y probá de nuevo; si se repite, avisá con una captura.'
+  if (/failed to fetch|network/i.test(msg)) return 'No se pudo conectar con el servidor. Revisá tu conexión.'
   if (/invalid login credentials/i.test(msg)) return 'Email o contraseña incorrectos.'
   if (/email not confirmed/i.test(msg)) return 'Todavía no confirmaste tu email. Revisá tu casilla (y spam).'
   if (/already registered/i.test(msg)) return 'Ya existe una cuenta con ese email.'
+  if (/invalid api key|no api key/i.test(msg)) return 'La clave de Supabase cargada en Vercel no es válida.'
   if (code === 'email_address_not_authorized' || /not authorized/i.test(msg))
     return 'Por ahora la app no puede enviar emails a esa dirección (configuración de envío pendiente).'
   if (code === 'over_email_send_rate_limit' || /rate limit/i.test(msg))
