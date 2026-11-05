@@ -145,7 +145,7 @@ button.google {
 
 .bottomnav {
   position: fixed; left: 0; right: 0; bottom: 0;
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   background: var(--surface); border-top: 1px solid var(--border);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   z-index: 10;
@@ -257,3 +257,9 @@ button.link-texto { background: none; border: 0; color: var(--text); font-size: 
 .combo-check { margin-left: auto; color: var(--accent); }
 .combo-opcion.crear { color: var(--accent); font-weight: 600; }
 .combo-vacio { padding: 10px; }
+
+/* ---------- Inversiones ---------- */
+.cotizacion { margin-top: 4px; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px dashed var(--border); font-variant-numeric: tabular-nums; }
+.tenencia { padding: 14px 0; display: flex; flex-direction: column; gap: 8px; }
+.tenencia-cabecera { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.positivo { color: var(--accent); }

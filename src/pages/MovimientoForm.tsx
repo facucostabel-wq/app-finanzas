@@ -4,12 +4,13 @@ import Combobox, { type Opcion } from '../components/Combobox'
 import {
   FORMAS_PAGO,
   obtenerMovimiento,
+  useActivos,
   tipoCategoriaDe,
   useCategorias,
   type FormaPago,
   type TipoMovimiento,
 } from '../lib/datos'
-import { hoyISO, montoAEditable, parseMonto } from '../lib/format'
+import { formatPrecio, hoyISO, montoAEditable, parseCantidad, parseMonto } from '../lib/format'
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
@@ -22,6 +23,7 @@ export default function MovimientoForm() {
   const navigate = useNavigate()
   const { perfil } = usePerfil()
   const { categorias, loading: cargandoCategorias, recargar: recargarCategorias } = useCategorias()
+  const { activos, recargar: recargarActivos } = useActivos()
   const favoritas = perfil?.monedas_favoritas ?? ['ARS']
 
   const [tipo, setTipo] = useState<TipoPantalla>('gasto')
@@ -30,6 +32,8 @@ export default function MovimientoForm() {
   const [moneda, setMoneda] = useState(favoritas[0])
   const [categoriaId, setCategoriaId] = useState<string | null>(null)
   const [formaPago, setFormaPago] = useState<FormaPago | null>(null)
+  const [activoId, setActivoId] = useState<string | null>(null)
+  const [cantidadTexto, setCantidadTexto] = useState('')
   const [fecha, setFecha] = useState(hoyISO())
   const [nota, setNota] = useState('')
   const [busy, setBusy] = useState(false)
@@ -49,6 +53,8 @@ export default function MovimientoForm() {
         setMoneda(m.moneda)
         setCategoriaId(m.categoria_id)
         setFormaPago(m.forma_pago)
+        setActivoId(m.activo_id)
+        setCantidadTexto(m.cantidad ? montoAEditable(m.cantidad) : '')
         setFecha(m.fecha)
         setNota(m.nota ?? '')
       }
@@ -61,6 +67,10 @@ export default function MovimientoForm() {
     (c) => c.tipo === tipoCategoriaDe(tipoMovimiento) && (c.activa || c.id === categoriaId),
   )
   const monto = parseMonto(montoTexto)
+  const cantidad = parseCantidad(cantidadTexto)
+  const esInversion = tipo === 'inversion'
+  // Cotización implícita: lo que costó (o se cobró) cada unidad, comisiones incluidas.
+  const cotizacion = esInversion && monto && cantidad ? monto / cantidad : null
   // Monedas: primero las favoritas, después el resto.
   const opcionesMoneda: Opcion[] = [
     ...favoritas.map((c) => ({ valor: c, texto: c, detalle: nombreMoneda(c), grupo: 'Favoritas' })),
@@ -72,7 +82,29 @@ export default function MovimientoForm() {
     })),
   ]
   const opcionesCategoria: Opcion[] = visibles.map((c) => ({ valor: c.id, texto: c.nombre }))
+  const opcionesActivo: Opcion[] = activos
+    .filter((a) => a.categoria_id === categoriaId && (a.activa || a.id === activoId))
+    .map((a) => ({ valor: a.id, texto: a.nombre }))
   const opcionesFormaPago: Opcion[] = FORMAS_PAGO.map((f) => ({ valor: f.valor, texto: f.texto }))
+
+  async function crearActivo(nombre: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('activos')
+      .insert({ categoria_id: categoriaId, nombre })
+      .select('id')
+      .single()
+    if (error) {
+      setError(error.code === '23505' ? 'Ya existe esa subcategoría.' : error.message)
+      return null
+    }
+    await recargarActivos()
+    return data.id as string
+  }
+
+  function cambiarCategoria(id: string) {
+    if (id !== categoriaId) setActivoId(null) // las subcategorías dependen de la categoría
+    setCategoriaId(id)
+  }
 
   async function crearCategoria(nombre: string): Promise<string | null> {
     const { data, error } = await supabase
@@ -91,6 +123,7 @@ export default function MovimientoForm() {
   function cambiarTipo(t: TipoPantalla) {
     setTipo(t)
     setCategoriaId(null) // las categorías dependen del tipo
+    setActivoId(null)
     setError(null)
   }
 
@@ -100,6 +133,8 @@ export default function MovimientoForm() {
     if (!monto) return setError('Ingresá un monto válido, por ejemplo 12.500 o 12500,50.')
     if (!categoriaId) return setError('Elegí una categoría.')
     if (tipo === 'gasto' && !formaPago) return setError('Elegí la forma de pago.')
+    if (esInversion && cantidadTexto.trim() && !cantidad)
+      return setError('La cantidad no es válida. Ejemplos: 0,0015 · 10 · 1.250,5')
 
     const datos = {
       tipo: tipoMovimiento,
@@ -107,6 +142,8 @@ export default function MovimientoForm() {
       moneda,
       categoria_id: categoriaId,
       forma_pago: tipo === 'gasto' ? formaPago : null,
+      activo_id: esInversion ? activoId : null,
+      cantidad: esInversion ? cantidad : null,
       fecha,
       nota: nota.trim() || null,
     }
@@ -191,11 +228,42 @@ export default function MovimientoForm() {
           etiqueta="Categoría"
           opciones={opcionesCategoria}
           valor={categoriaId}
-          onCambio={setCategoriaId}
+          onCambio={cambiarCategoria}
           placeholder="Buscar o crear categoría…"
           onCrear={crearCategoria}
           textoVacio="No hay categorías activas de este tipo."
         />
+
+        {esInversion && categoriaId && (
+          <Combobox
+            etiqueta="Subcategoría (opcional)"
+            opciones={opcionesActivo}
+            valor={activoId}
+            onCambio={setActivoId}
+            placeholder="Ej.: BTC, AAPL, YPF… o creá una"
+            onCrear={crearActivo}
+            textoVacio="Escribí para crear la primera subcategoría."
+          />
+        )}
+
+        {esInversion && (
+          <label>
+            {sentido === 'aporte' ? 'Cantidad comprada (opcional)' : 'Cantidad vendida (opcional)'}
+            <input
+              inputMode="decimal"
+              placeholder="Ej.: 0,0015 · 10 · 1.250"
+              value={cantidadTexto}
+              onChange={(e) => setCantidadTexto(e.target.value)}
+              aria-invalid={cantidadTexto !== '' && !cantidad}
+            />
+            <small className="muted">Unidades, nominales o cuotapartes.</small>
+            {cotizacion && (
+              <span className="cotizacion">
+                Cotización: <strong>{formatPrecio(cotizacion, moneda)}</strong> por unidad
+              </span>
+            )}
+          </label>
+        )}
 
         {tipo === 'gasto' && (
           <Combobox

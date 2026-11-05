@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
-import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useCategorias, useMovimientosDelMes, type Movimiento } from '../lib/datos'
-import { formatMonto, nombreDia } from '../lib/format'
+import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useActivos, useCategorias, useMovimientosDelMes, type Movimiento } from '../lib/datos'
+import { formatCantidad, formatMonto, formatPrecio, nombreDia } from '../lib/format'
 import { SelectorMes, useMes } from '../lib/mes'
 
 const SIGNO: Record<Movimiento['tipo'], string> = { gasto: '−', ingreso: '+', aporte: '→', rescate: '←' }
@@ -11,6 +11,8 @@ export default function Movimientos() {
   const { movimientos, loading, error } = useMovimientosDelMes(mes)
   const { categorias } = useCategorias()
   const nombres = new Map(categorias.map((c) => [c.id, c.nombre]))
+  const { activos } = useActivos()
+  const nombresActivo = new Map(activos.map((a) => [a.id, a.nombre]))
 
   // Agrupa por día (ya vienen ordenados del más reciente al más viejo).
   const dias: { fecha: string; items: Movimiento[] }[] = []
@@ -41,9 +43,15 @@ export default function Movimientos() {
                 <li key={m.id}>
                   <Link to={`/movimiento/${m.id}`} className="fila">
                     <div>
-                      <div>{nombres.get(m.categoria_id) ?? '—'}</div>
+                      <div>
+                        {nombres.get(m.categoria_id) ?? '—'}
+                        {m.activo_id && <span className="muted"> · {nombresActivo.get(m.activo_id)}</span>}
+                      </div>
                       <div className="muted chico">
                         {m.forma_pago ? TEXTO_FORMA_PAGO[m.forma_pago] : TEXTO_TIPO[m.tipo]}
+                        {m.cantidad
+                          ? ` · ${formatCantidad(m.cantidad)} a ${formatPrecio(m.monto / m.cantidad, m.moneda)}`
+                          : ''}
                         {m.nota ? ` · ${m.nota}` : ''}
                       </div>
                     </div>

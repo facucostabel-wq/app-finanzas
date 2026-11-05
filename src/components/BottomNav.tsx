@@ -18,6 +18,10 @@ export default function BottomNav() {
           <Icono d="M4 6h16M4 12h16M4 18h10" />
           Movimientos
         </NavLink>
+        <NavLink to="/inversiones">
+          <Icono d="M3 17l6-6 4 4 8-8M15 7h6v6" />
+          Inversiones
+        </NavLink>
         <NavLink to="/ajustes">
           <Icono d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
           Ajustes

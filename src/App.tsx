@@ -6,6 +6,7 @@ import { missingVars, supabaseMissingConfig } from './lib/supabase'
 import Ajustes from './pages/Ajustes'
 import Consentimiento from './pages/Consentimiento'
 import Home from './pages/Home'
+import Inversiones from './pages/Inversiones'
 import Login from './pages/Login'
 import MovimientoForm from './pages/MovimientoForm'
 import Movimientos from './pages/Movimientos'
@@ -42,6 +43,7 @@ export default function App() {
       <Route path="/movimientos" element={protegida(<Movimientos />)} />
       <Route path="/nuevo" element={protegida(<MovimientoForm key="nuevo" />)} />
       <Route path="/movimiento/:id" element={protegida(<MovimientoForm />)} />
+      <Route path="/inversiones" element={protegida(<Inversiones />)} />
       <Route path="/ajustes" element={protegida(<Ajustes />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -18,24 +18,48 @@ export function formatMonto(monto: number, moneda: Moneda): string {
 }
 
 /**
- * Interpreta lo que escribe el usuario con convención argentina:
- * "12.345,67" → 12345.67 · "12345,5" → 12345.5 · "12.345" → 12345 · "12.5" → 12.5
- * Devuelve null si no es un número válido mayor a cero.
+ * Interpreta un número escrito con convención argentina:
+ * "12.345,67" → 12345.67 · "12345,5" → 12345.5 · "12.345" → 12345 · "0.0015" → 0.0015
+ * Devuelve null si no es un número válido mayor a cero o tiene más decimales de los permitidos.
  */
-export function parseMonto(texto: string): number | null {
+export function parseNumero(texto: string, maxDecimales: number): number | null {
   let t = texto.replace(/\s|\$|US/gi, '')
   if (!t) return null
   if (t.includes(',')) {
     t = t.replace(/\./g, '').replace(',', '.')
-  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
-    t = t.replace(/\./g, '') // puntos como separador de miles
+  } else if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(t)) {
+    t = t.replace(/\./g, '') // puntos como separador de miles ("12.345")
   }
-  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null
+  const re = new RegExp(`^\\d+(\\.\\d{1,${maxDecimales}})?$`)
+  if (!re.test(t)) return null
   const n = Number(t)
   return n > 0 ? n : null
 }
 
-/** Monto guardado → texto editable ("12345.5" → "12345,5"). */
+/** Montos: hasta 2 decimales. */
+export const parseMonto = (texto: string) => parseNumero(texto, 2)
+
+/** Cantidades (BTC, CEDEARs, cuotapartes): hasta 10 decimales. */
+export const parseCantidad = (texto: string) => parseNumero(texto, 10)
+
+const fmtCantidad = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 10 })
+
+/** 0,0015 · 1.250 · 12,5 */
+export function formatCantidad(n: number): string {
+  return fmtCantidad.format(n)
+}
+
+/** Precio por unidad: con más decimales cuando es menor a 1 (ej. cripto chicas). */
+export function formatPrecio(precio: number, moneda: Moneda): string {
+  if (precio >= 1) return formatMonto(Math.round(precio * 100) / 100, moneda)
+  try {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: moneda, maximumSignificantDigits: 4 }).format(precio)
+  } catch {
+    return String(precio)
+  }
+}
+
+/** Número guardado → texto editable ("12345.5" → "12345,5"). */
 export function montoAEditable(monto: number): string {
   return String(monto).replace('.', ',')
 }

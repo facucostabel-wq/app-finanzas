@@ -23,6 +23,20 @@ export type Movimiento = {
   categoria_id: string
   forma_pago: FormaPago | null
   nota: string | null
+  /** Subcategoría de inversión (BTC, AAPL…). Solo inversiones. */
+  activo_id: string | null
+  /** Unidades compradas o vendidas. Solo inversiones. */
+  cantidad: number | null
+}
+
+/** Subcategoría de inversión: BTC dentro de Cripto, AAPL dentro de CEDEARs… */
+export type Activo = { id: string; categoria_id: string; nombre: string; activa: boolean }
+
+const CAMPOS_MOV = 'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad'
+
+// numeric llega como string desde la API: lo pasamos a número.
+function normalizar(m: Record<string, unknown>): Movimiento {
+  return { ...(m as Movimiento), monto: Number(m.monto), cantidad: m.cantidad == null ? null : Number(m.cantidad) }
 }
 
 export type NuevoMovimiento = Omit<Movimiento, 'id'>
@@ -88,7 +102,7 @@ export function useMovimientosDelMes(mes: Mes) {
     const { desde, hasta } = rangoMes(mes)
     const { data, error } = await supabase
       .from('movimientos')
-      .select('id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota')
+      .select(CAMPOS_MOV)
       .gte('fecha', desde)
       .lt('fecha', hasta)
       .order('fecha', { ascending: false })
@@ -96,8 +110,7 @@ export function useMovimientosDelMes(mes: Mes) {
     if (error) setError(error.message)
     else {
       setError(null)
-      // numeric llega como string desde la API: lo pasamos a número.
-      setMovimientos((data ?? []).map((m) => ({ ...m, monto: Number(m.monto) })) as Movimiento[])
+      setMovimientos((data ?? []).map(normalizar))
     }
     setLoading(false)
   }, [mes])
@@ -110,12 +123,8 @@ export function useMovimientosDelMes(mes: Mes) {
 }
 
 export async function obtenerMovimiento(id: string): Promise<Movimiento | null> {
-  const { data } = await supabase
-    .from('movimientos')
-    .select('id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota')
-    .eq('id', id)
-    .maybeSingle()
-  return data ? ({ ...data, monto: Number(data.monto) } as Movimiento) : null
+  const { data } = await supabase.from('movimientos').select(CAMPOS_MOV).eq('id', id).maybeSingle()
+  return data ? normalizar(data) : null
 }
 
 export type Totales = { ingresos: number; gastos: number; aportes: number; rescates: number }
@@ -151,4 +160,37 @@ export function gastosPorCategoria(movs: Movimiento[], moneda: Moneda, categoria
   return [...acc.entries()]
     .map(([id, total]) => ({ id, nombre: nombres.get(id) ?? '—', total }))
     .sort((a, b) => b.total - a.total)
+}
+
+export function useActivos() {
+  const [activos, setActivos] = useState<Activo[]>([])
+  const recargar = useCallback(async () => {
+    const { data } = await supabase.from('activos').select('id, categoria_id, nombre, activa').order('nombre')
+    setActivos((data ?? []) as Activo[])
+  }, [])
+  useEffect(() => {
+    recargar()
+  }, [recargar])
+  return { activos, recargar }
+}
+
+/** Todas las inversiones (aportes y rescates) históricas, en orden cronológico. */
+export function useInversiones() {
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    supabase
+      .from('movimientos')
+      .select(CAMPOS_MOV)
+      .in('tipo', ['aporte', 'rescate'])
+      .order('fecha')
+      .order('creado_at')
+      .then(({ data, error }) => {
+        if (error) setError(error.message)
+        else setMovimientos((data ?? []).map(normalizar))
+        setLoading(false)
+      })
+  }, [])
+  return { movimientos, loading, error }
 }
