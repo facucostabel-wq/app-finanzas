@@ -12,6 +12,8 @@ export type Categoria = {
   nombre: string
   orden: number
   activa: boolean
+  /** Si es una inversión en divisa (ej. "Dólares" = USD): la cantidad son las divisas compradas. */
+  divisa: string | null
 }
 
 export type Movimiento = {
@@ -77,7 +79,7 @@ export function useCategorias() {
   const recargar = useCallback(async () => {
     const { data, error } = await supabase
       .from('categorias')
-      .select('id, tipo, nombre, orden, activa')
+      .select('id, tipo, nombre, orden, activa, divisa')
       .order('orden')
       .order('nombre')
     if (error) setError(error.message)
@@ -129,13 +131,20 @@ export async function obtenerMovimiento(id: string): Promise<Movimiento | null> 
 
 export type Totales = { ingresos: number; gastos: number; aportes: number; rescates: number }
 
-/** Totales del mes por moneda (sin convertir: cada moneda por separado). */
-export function totalesPorMoneda(movs: Movimiento[]): Map<Moneda, Totales> {
+/**
+ * Totales del mes por moneda (sin convertir: cada moneda por separado).
+ * Las compras/ventas de divisa (categoría "Dólares") cuentan en la divisa, por la
+ * cantidad comprada o vendida, no por los pesos pagados.
+ */
+export function totalesPorMoneda(movs: Movimiento[], categorias: Categoria[] = []): Map<Moneda, Totales> {
+  const divisaDe = new Map(categorias.map((c) => [c.id, c.divisa]))
   const t = new Map<Moneda, Totales>()
   for (const m of movs) {
-    if (!t.has(m.moneda)) t.set(m.moneda, { ingresos: 0, gastos: 0, aportes: 0, rescates: 0 })
+    const divisa = divisaDe.get(m.categoria_id)
+    const [moneda, monto] = divisa && m.cantidad ? [divisa, m.cantidad] : [m.moneda, m.monto]
+    if (!t.has(moneda)) t.set(moneda, { ingresos: 0, gastos: 0, aportes: 0, rescates: 0 })
     const k = m.tipo === 'gasto' ? 'gastos' : m.tipo === 'ingreso' ? 'ingresos' : m.tipo === 'aporte' ? 'aportes' : 'rescates'
-    t.get(m.moneda)![k] += m.monto
+    t.get(moneda)![k] += monto
   }
   return t
 }

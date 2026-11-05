@@ -16,7 +16,7 @@ export default function Home() {
   const nombre = perfil?.nombre?.split(' ')[0]
   const favoritas = perfil?.monedas_favoritas ?? []
 
-  const totales = totalesPorMoneda(movimientos)
+  const totales = totalesPorMoneda(movimientos, categorias)
   const monedas = ordenarMonedas(totales.keys(), favoritas)
   const variasMonedas = monedas.length > 1
   const monedasConGastos = monedas.filter((m) => (totales.get(m)?.gastos ?? 0) > 0)

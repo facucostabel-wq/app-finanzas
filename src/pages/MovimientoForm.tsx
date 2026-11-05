@@ -69,6 +69,8 @@ export default function MovimientoForm() {
   const monto = parseMonto(montoTexto)
   const cantidad = parseCantidad(cantidadTexto)
   const esInversion = tipo === 'inversion'
+  // Categoría de divisa (ej. "Dólares"): la cantidad son los dólares comprados y es obligatoria.
+  const divisa = categorias.find((c) => c.id === categoriaId)?.divisa ?? null
   // Cotización implícita: lo que costó (o se cobró) cada unidad, comisiones incluidas.
   const cotizacion = esInversion && monto && cantidad ? monto / cantidad : null
   // Monedas: primero las favoritas, después el resto.
@@ -104,6 +106,9 @@ export default function MovimientoForm() {
   function cambiarCategoria(id: string) {
     if (id !== categoriaId) setActivoId(null) // las subcategorías dependen de la categoría
     setCategoriaId(id)
+    // Comprar dólares se paga en otra moneda: si estaba en USD, se pasa a la primera favorita distinta.
+    const d = categorias.find((c) => c.id === id)?.divisa
+    if (d && moneda === d) setMoneda(favoritas.find((f) => f !== d) ?? 'ARS')
   }
 
   async function crearCategoria(nombre: string): Promise<string | null> {
@@ -133,6 +138,9 @@ export default function MovimientoForm() {
     if (!monto) return setError('Ingresá un monto válido, por ejemplo 12.500 o 12500,50.')
     if (!categoriaId) return setError('Elegí una categoría.')
     if (tipo === 'gasto' && !formaPago) return setError('Elegí la forma de pago.')
+    if (esInversion && divisa && !cantidad) return setError(`Indicá cuántos ${divisa} compraste o vendiste.`)
+    if (esInversion && divisa && moneda === divisa)
+      return setError(`Pagar ${divisa} con ${divisa} es un movimiento entre cuentas, no una inversión.`)
     if (esInversion && cantidadTexto.trim() && !cantidad)
       return setError('La cantidad no es válida. Ejemplos: 0,0015 · 10 · 1.250,5')
 
@@ -248,7 +256,11 @@ export default function MovimientoForm() {
 
         {esInversion && (
           <label>
-            {sentido === 'aporte' ? 'Cantidad comprada (opcional)' : 'Cantidad vendida (opcional)'}
+            {divisa
+              ? `${divisa} ${sentido === 'aporte' ? 'comprados' : 'vendidos'}`
+              : sentido === 'aporte'
+                ? 'Cantidad comprada (opcional)'
+                : 'Cantidad vendida (opcional)'}
             <input
               inputMode="decimal"
               placeholder="Ej.: 0,0015 · 10 · 1.250"
@@ -256,10 +268,15 @@ export default function MovimientoForm() {
               onChange={(e) => setCantidadTexto(e.target.value)}
               aria-invalid={cantidadTexto !== '' && !cantidad}
             />
-            <small className="muted">Unidades, nominales o cuotapartes.</small>
+            <small className="muted">
+              {divisa
+                ? `En el resumen cuenta esta cantidad en ${divisa}, sin conversión. El monto es lo que pagaste o cobraste.`
+                : 'Unidades, nominales o cuotapartes.'}
+            </small>
             {cotizacion && (
               <span className="cotizacion">
-                Cotización: <strong>{formatPrecio(cotizacion, moneda)}</strong> por unidad
+                {divisa ? (sentido === 'aporte' ? 'Compraste a ' : 'Vendiste a ') : 'Cotización: '}
+                <strong>{formatPrecio(cotizacion, moneda)}</strong> {divisa ? `por ${divisa}` : 'por unidad'}
               </span>
             )}
           </label>
