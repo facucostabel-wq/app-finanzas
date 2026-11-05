@@ -8,7 +8,7 @@ export default function Inversiones() {
   const { categorias } = useCategorias()
   const { activos } = useActivos()
   const nombreCat = new Map(categorias.map((c) => [c.id, c.nombre]))
-  const divisaDe = new Map(categorias.map((c) => [c.id, c.divisa]))
+  const divisaDe = new Map(activos.map((a) => [a.id, a.divisa]))
   const nombreActivo = new Map(activos.map((a) => [a.id, a.nombre]))
 
   const tenencias = calcularTenencias(movimientos)
@@ -55,15 +55,19 @@ export default function Inversiones() {
                 <div>
                   <dt>Tenencia</dt>
                   <dd>
-                    {divisaDe.get(t.categoria_id)
-                      ? formatMonto(t.cantidad, divisaDe.get(t.categoria_id)!)
+                    {t.activo_id && divisaDe.get(t.activo_id)
+                      ? formatMonto(t.cantidad, divisaDe.get(t.activo_id)!)
                       : formatCantidad(t.cantidad)}
                   </dd>
                 </div>
                 {t.cantidad > 0 && (
                   <>
                     <div>
-                      <dt>{divisaDe.get(t.categoria_id) ? `Precio promedio por ${divisaDe.get(t.categoria_id)}` : 'Precio promedio (PPP)'}</dt>
+                      <dt>
+                        {t.activo_id && divisaDe.get(t.activo_id)
+                          ? `Precio promedio por ${divisaDe.get(t.activo_id)}`
+                          : 'Precio promedio (PPP)'}
+                      </dt>
                       <dd>{formatPrecio(t.ppp, t.moneda)}</dd>
                     </div>
                     <div>

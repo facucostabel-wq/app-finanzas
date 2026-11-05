@@ -12,8 +12,8 @@ export type Categoria = {
   nombre: string
   orden: number
   activa: boolean
-  /** Si es una inversión en divisa (ej. "Dólares" = USD): la cantidad son las divisas compradas. */
-  divisa: string | null
+  /** "Moneda extranjera": cada subcategoría es una moneda y la cantidad son las divisas compradas. */
+  es_divisas: boolean
 }
 
 export type Movimiento = {
@@ -32,7 +32,14 @@ export type Movimiento = {
 }
 
 /** Subcategoría de inversión: BTC dentro de Cripto, AAPL dentro de CEDEARs… */
-export type Activo = { id: string; categoria_id: string; nombre: string; activa: boolean }
+export type Activo = {
+  id: string
+  categoria_id: string
+  nombre: string
+  activa: boolean
+  /** Solo en "Moneda extranjera": la moneda que representa (USD, EUR…). */
+  divisa: string | null
+}
 
 const CAMPOS_MOV = 'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad'
 
@@ -79,7 +86,7 @@ export function useCategorias() {
   const recargar = useCallback(async () => {
     const { data, error } = await supabase
       .from('categorias')
-      .select('id, tipo, nombre, orden, activa, divisa')
+      .select('id, tipo, nombre, orden, activa, es_divisas')
       .order('orden')
       .order('nombre')
     if (error) setError(error.message)
@@ -133,14 +140,14 @@ export type Totales = { ingresos: number; gastos: number; aportes: number; resca
 
 /**
  * Totales del mes por moneda (sin convertir: cada moneda por separado).
- * Las compras/ventas de divisa (categoría "Dólares") cuentan en la divisa, por la
- * cantidad comprada o vendida, no por los pesos pagados.
+ * Las compras/ventas de moneda extranjera cuentan en esa moneda, por la cantidad
+ * comprada o vendida, no por lo que se pagó en pesos.
  */
-export function totalesPorMoneda(movs: Movimiento[], categorias: Categoria[] = []): Map<Moneda, Totales> {
-  const divisaDe = new Map(categorias.map((c) => [c.id, c.divisa]))
+export function totalesPorMoneda(movs: Movimiento[], activos: Activo[] = []): Map<Moneda, Totales> {
+  const divisaDe = new Map(activos.map((a) => [a.id, a.divisa]))
   const t = new Map<Moneda, Totales>()
   for (const m of movs) {
-    const divisa = divisaDe.get(m.categoria_id)
+    const divisa = m.activo_id ? divisaDe.get(m.activo_id) : null
     const [moneda, monto] = divisa && m.cantidad ? [divisa, m.cantidad] : [m.moneda, m.monto]
     if (!t.has(moneda)) t.set(moneda, { ingresos: 0, gastos: 0, aportes: 0, rescates: 0 })
     const k = m.tipo === 'gasto' ? 'gastos' : m.tipo === 'ingreso' ? 'ingresos' : m.tipo === 'aporte' ? 'aportes' : 'rescates'
@@ -174,7 +181,7 @@ export function gastosPorCategoria(movs: Movimiento[], moneda: Moneda, categoria
 export function useActivos() {
   const [activos, setActivos] = useState<Activo[]>([])
   const recargar = useCallback(async () => {
-    const { data } = await supabase.from('activos').select('id, categoria_id, nombre, activa').order('nombre')
+    const { data } = await supabase.from('activos').select('id, categoria_id, nombre, activa, divisa').order('nombre')
     setActivos((data ?? []) as Activo[])
   }, [])
   useEffect(() => {

@@ -69,8 +69,9 @@ export default function MovimientoForm() {
   const monto = parseMonto(montoTexto)
   const cantidad = parseCantidad(cantidadTexto)
   const esInversion = tipo === 'inversion'
-  // Categoría de divisa (ej. "Dólares"): la cantidad son los dólares comprados y es obligatoria.
-  const divisa = categorias.find((c) => c.id === categoriaId)?.divisa ?? null
+  // "Moneda extranjera": la subcategoría es la moneda (obligatoria) y la cantidad, las divisas compradas.
+  const esDivisas = categorias.find((c) => c.id === categoriaId)?.es_divisas ?? false
+  const divisa = esDivisas ? (activos.find((a) => a.id === activoId)?.divisa ?? null) : null
   // Cotización implícita: lo que costó (o se cobró) cada unidad, comisiones incluidas.
   const cotizacion = esInversion && monto && cantidad ? monto / cantidad : null
   // Monedas: primero las favoritas, después el resto.
@@ -84,9 +85,19 @@ export default function MovimientoForm() {
     })),
   ]
   const opcionesCategoria: Opcion[] = visibles.map((c) => ({ valor: c.id, texto: c.nombre }))
-  const opcionesActivo: Opcion[] = activos
-    .filter((a) => a.categoria_id === categoriaId && (a.activa || a.id === activoId))
-    .map((a) => ({ valor: a.id, texto: a.nombre }))
+  const delaCategoria = activos.filter((a) => a.categoria_id === categoriaId && (a.activa || a.id === activoId))
+  const opcionesActivo: Opcion[] = esDivisas
+    ? [
+        // Monedas ya usadas primero; después el resto, que se crean al elegirlas.
+        ...delaCategoria.map((a) => ({ valor: a.id, texto: a.nombre, detalle: nombreMoneda(a.nombre), grupo: 'Tus monedas' })),
+        ...MONEDAS.filter((m) => m.codigo !== 'ARS' && !delaCategoria.some((a) => a.divisa === m.codigo)).map((m) => ({
+          valor: `nueva:${m.codigo}`,
+          texto: m.codigo,
+          detalle: m.nombre,
+          grupo: 'Otras monedas',
+        })),
+      ]
+    : delaCategoria.map((a) => ({ valor: a.id, texto: a.nombre }))
   const opcionesFormaPago: Opcion[] = FORMAS_PAGO.map((f) => ({ valor: f.valor, texto: f.texto }))
 
   async function crearActivo(nombre: string): Promise<string | null> {
@@ -106,8 +117,27 @@ export default function MovimientoForm() {
   function cambiarCategoria(id: string) {
     if (id !== categoriaId) setActivoId(null) // las subcategorías dependen de la categoría
     setCategoriaId(id)
-    // Comprar dólares se paga en otra moneda: si estaba en USD, se pasa a la primera favorita distinta.
-    const d = categorias.find((c) => c.id === id)?.divisa
+  }
+
+  async function cambiarActivo(valor: string) {
+    let id = valor
+    let d: string | null = null
+    if (valor.startsWith('nueva:')) {
+      // Moneda que todavía no usaste: se crea la subcategoría en el momento.
+      d = valor.slice(6)
+      const { data, error } = await supabase
+        .from('activos')
+        .insert({ categoria_id: categoriaId, nombre: d, divisa: d })
+        .select('id')
+        .single()
+      if (error) return setError(error.message)
+      await recargarActivos()
+      id = data.id as string
+    } else {
+      d = activos.find((a) => a.id === valor)?.divisa ?? null
+    }
+    setActivoId(id)
+    // Una moneda se paga con otra: si coincidían, se pasa a la primera favorita distinta.
     if (d && moneda === d) setMoneda(favoritas.find((f) => f !== d) ?? 'ARS')
   }
 
@@ -138,7 +168,9 @@ export default function MovimientoForm() {
     if (!monto) return setError('Ingresá un monto válido, por ejemplo 12.500 o 12500,50.')
     if (!categoriaId) return setError('Elegí una categoría.')
     if (tipo === 'gasto' && !formaPago) return setError('Elegí la forma de pago.')
-    if (esInversion && divisa && !cantidad) return setError(`Indicá cuántos ${divisa} compraste o vendiste.`)
+    if (esInversion && esDivisas && !activoId) return setError('Elegí qué moneda compraste o vendiste.')
+    if (esInversion && esDivisas && !cantidad)
+      return setError(`Indicá cuántos ${divisa ?? 'de la moneda'} compraste o vendiste.`)
     if (esInversion && divisa && moneda === divisa)
       return setError(`Pagar ${divisa} con ${divisa} es un movimiento entre cuentas, no una inversión.`)
     if (esInversion && cantidadTexto.trim() && !cantidad)
@@ -244,20 +276,24 @@ export default function MovimientoForm() {
 
         {esInversion && categoriaId && (
           <Combobox
-            etiqueta="Subcategoría (opcional)"
+            etiqueta={
+              esDivisas ? (sentido === 'aporte' ? 'Moneda comprada' : 'Moneda vendida') : 'Subcategoría (opcional)'
+            }
             opciones={opcionesActivo}
             valor={activoId}
-            onCambio={setActivoId}
-            placeholder="Ej.: BTC, AAPL, YPF… o creá una"
-            onCrear={crearActivo}
-            textoVacio="Escribí para crear la primera subcategoría."
+            onCambio={cambiarActivo}
+            placeholder={esDivisas ? 'Buscar: dólar, euro, real…' : 'Ej.: BTC, AAPL, YPF… o creá una'}
+            onCrear={esDivisas ? undefined : crearActivo}
+            textoVacio={esDivisas ? 'Sin resultados.' : 'Escribí para crear la primera subcategoría.'}
           />
         )}
 
         {esInversion && (
           <label>
-            {divisa
-              ? `${divisa} ${sentido === 'aporte' ? 'comprados' : 'vendidos'}`
+            {esDivisas
+              ? divisa
+                ? `${divisa} ${sentido === 'aporte' ? 'comprados' : 'vendidos'}`
+                : `Cantidad ${sentido === 'aporte' ? 'comprada' : 'vendida'}`
               : sentido === 'aporte'
                 ? 'Cantidad comprada (opcional)'
                 : 'Cantidad vendida (opcional)'}
@@ -269,8 +305,8 @@ export default function MovimientoForm() {
               aria-invalid={cantidadTexto !== '' && !cantidad}
             />
             <small className="muted">
-              {divisa
-                ? `En el resumen cuenta esta cantidad en ${divisa}, sin conversión. El monto es lo que pagaste o cobraste.`
+              {esDivisas
+                ? `En el resumen cuenta esta cantidad en ${divisa ?? 'esa moneda'}, sin conversión. El monto es lo que pagaste o cobraste.`
                 : 'Unidades, nominales o cuotapartes.'}
             </small>
             {cotizacion && (

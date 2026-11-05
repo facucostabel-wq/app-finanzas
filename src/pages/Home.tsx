@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
-import { gastosPorCategoria, ordenarMonedas, totalesPorMoneda, useCategorias, useMovimientosDelMes } from '../lib/datos'
+import {
+  gastosPorCategoria,
+  ordenarMonedas,
+  totalesPorMoneda,
+  useActivos,
+  useCategorias,
+  useMovimientosDelMes,
+} from '../lib/datos'
 import { formatMonto, type Moneda } from '../lib/format'
 import { nombreMoneda } from '../lib/monedas'
 import { SelectorMes, useMes } from '../lib/mes'
@@ -12,11 +19,12 @@ export default function Home() {
   const { mes } = useMes()
   const { movimientos, loading, error } = useMovimientosDelMes(mes)
   const { categorias } = useCategorias()
+  const { activos } = useActivos()
   const [monedaGastos, setMonedaGastos] = useState<Moneda | null>(null)
   const nombre = perfil?.nombre?.split(' ')[0]
   const favoritas = perfil?.monedas_favoritas ?? []
 
-  const totales = totalesPorMoneda(movimientos, categorias)
+  const totales = totalesPorMoneda(movimientos, activos)
   const monedas = ordenarMonedas(totales.keys(), favoritas)
   const variasMonedas = monedas.length > 1
   const monedasConGastos = monedas.filter((m) => (totales.get(m)?.gastos ?? 0) > 0)
