@@ -200,7 +200,7 @@ a.primary { background: var(--accent); color: var(--accent-text); border-radius:
 .monto.ingreso, .monto.rescate { color: var(--accent); }
 
 .segmentado { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 3px; }
-.segmentado button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 10px 6px; border-radius: 8px; font-size: 0.95rem; }
+.segmentado button { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--muted); padding: 10px 6px; border-radius: 8px; font-size: 0.95rem; }
 .segmentado button[aria-pressed='true'] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .segmentado.chico button { padding: 7px 6px; font-size: 0.85rem; }
 
@@ -267,3 +267,6 @@ button.link-texto { background: none; border: 0; color: var(--text); font-size: 
 /* ---------- Dinero disponible ---------- */
 .disponible .totales dd { font-size: 1.35rem; }
 .disponible a { color: var(--accent); }
+
+.totales .sub dt { padding-left: 14px; font-size: 0.85rem; }
+.totales .sub dd { font-weight: 400; font-size: 0.9rem; color: var(--muted); }

@@ -76,7 +76,10 @@ export default function Home() {
                 })}
               </dl>
             )}
-            <p className="muted chico">Saldo inicial + ingresos − gastos − invertido + retirado, acumulado mes a mes.</p>
+            <p className="muted chico">
+              Plata para gastar: saldo inicial + ingresos − gastos (salvo los de tarjeta de crédito) − pagos de tarjeta −
+              invertido + retirado.
+            </p>
             {!cargandoSaldos && saldos.size === 0 && (
               <Link to="/ajustes" className="chico">
                 Cargá tu saldo inicial en Ajustes para que el disponible arranque desde lo que tenés hoy.
@@ -101,16 +104,25 @@ export default function Home() {
             const inversionNeta = t.aportes - t.rescates
             return (
               <section className="card" key={moneda}>
-                {variasMonedas && <h2>{nombreMoneda(moneda)}</h2>}
+                <h2>
+                  Resumen de {nombreMes(mes).split(' ')[0].toLowerCase()}
+                  {variasMonedas && <span className="muted"> · {nombreMoneda(moneda)}</span>}
+                </h2>
                 <dl className="totales">
                   <div>
                     <dt>Ingresos</dt>
                     <dd>{formatMonto(t.ingresos, moneda)}</dd>
                   </div>
                   <div>
-                    <dt>Gastos</dt>
+                    <dt>Gastos totales</dt>
                     <dd>{formatMonto(t.gastos, moneda)}</dd>
                   </div>
+                  {t.gastosCredito > 0 && (
+                    <div className="sub">
+                      <dt>con tarjeta de crédito</dt>
+                      <dd>{formatMonto(t.gastosCredito, moneda)}</dd>
+                    </div>
+                  )}
                   <div className="destacado">
                     <dt>Ahorro (ingresos − gastos)</dt>
                     <dd className={ahorro < 0 ? 'negativo' : ''}>{formatMonto(ahorro, moneda)}</dd>
@@ -119,6 +131,18 @@ export default function Home() {
                     <div>
                       <dt>Invertido neto (invertí − retiré)</dt>
                       <dd>{formatMonto(inversionNeta, moneda)}</dd>
+                    </div>
+                  )}
+                  {t.usadoEnDivisas !== 0 && (
+                    <div>
+                      <dt>Usado para comprar moneda extranjera</dt>
+                      <dd>{formatMonto(t.usadoEnDivisas, moneda)}</dd>
+                    </div>
+                  )}
+                  {t.pagosTarjeta > 0 && (
+                    <div>
+                      <dt>Pagos de tarjeta</dt>
+                      <dd>{formatMonto(t.pagosTarjeta, moneda)}</dd>
                     </div>
                   )}
                 </dl>

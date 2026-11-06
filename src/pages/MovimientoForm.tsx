@@ -15,7 +15,7 @@ import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 
-type TipoPantalla = 'gasto' | 'ingreso' | 'inversion'
+type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'pago_tarjeta'
 
 export default function MovimientoForm() {
   const { id } = useParams()
@@ -63,8 +63,10 @@ export default function MovimientoForm() {
   }, [id])
 
   const tipoMovimiento: TipoMovimiento = tipo === 'inversion' ? sentido : tipo
+  const esPagoTarjeta = tipo === 'pago_tarjeta'
+  const tipoCat = tipoMovimiento === 'pago_tarjeta' ? null : tipoCategoriaDe(tipoMovimiento)
   const visibles = categorias.filter(
-    (c) => c.tipo === tipoCategoriaDe(tipoMovimiento) && (c.activa || c.id === categoriaId),
+    (c) => c.tipo === tipoCat && (c.activa || c.id === categoriaId),
   )
   const monto = parseMonto(montoTexto)
   const cantidad = parseCantidad(cantidadTexto)
@@ -144,7 +146,7 @@ export default function MovimientoForm() {
   async function crearCategoria(nombre: string): Promise<string | null> {
     const { data, error } = await supabase
       .from('categorias')
-      .insert({ tipo: tipoCategoriaDe(tipoMovimiento), nombre })
+      .insert({ tipo: tipoCat, nombre })
       .select('id')
       .single()
     if (error) {
@@ -166,7 +168,7 @@ export default function MovimientoForm() {
     e.preventDefault()
     setError(null)
     if (!monto) return setError('Ingresá un monto válido, por ejemplo 12.500 o 12500,50.')
-    if (!categoriaId) return setError('Elegí una categoría.')
+    if (!esPagoTarjeta && !categoriaId) return setError('Elegí una categoría.')
     if (tipo === 'gasto' && !formaPago) return setError('Elegí la forma de pago.')
     if (esInversion && esDivisas && !activoId) return setError('Elegí qué moneda compraste o vendiste.')
     if (esInversion && esDivisas && !cantidad)
@@ -180,7 +182,7 @@ export default function MovimientoForm() {
       tipo: tipoMovimiento,
       monto,
       moneda,
-      categoria_id: categoriaId,
+      categoria_id: esPagoTarjeta ? null : categoriaId,
       forma_pago: tipo === 'gasto' ? formaPago : null,
       activo_id: esInversion ? activoId : null,
       cantidad: esInversion ? cantidad : null,
@@ -224,6 +226,7 @@ export default function MovimientoForm() {
               ['gasto', 'Gasto'],
               ['ingreso', 'Ingreso'],
               ['inversion', 'Inversión'],
+              ['pago_tarjeta', 'Pago tarjeta'],
             ] as [TipoPantalla, string][]
           ).map(([v, t]) => (
             <button type="button" key={v} aria-pressed={tipo === v} onClick={() => cambiarTipo(v)}>
@@ -264,15 +267,22 @@ export default function MovimientoForm() {
           placeholder="Buscar: dólar, real, EUR…"
         />
 
-        <Combobox
-          etiqueta="Categoría"
-          opciones={opcionesCategoria}
-          valor={categoriaId}
-          onCambio={cambiarCategoria}
-          placeholder="Buscar o crear categoría…"
-          onCrear={crearCategoria}
-          textoVacio="No hay categorías activas de este tipo."
-        />
+        {esPagoTarjeta ? (
+          <p className="muted chico">
+            Registrá cuánto pagaste del resumen de la tarjeta. No es un gasto nuevo (los consumos ya están cargados):
+            solo descuenta del dinero disponible.
+          </p>
+        ) : (
+          <Combobox
+            etiqueta="Categoría"
+            opciones={opcionesCategoria}
+            valor={categoriaId}
+            onCambio={cambiarCategoria}
+            placeholder="Buscar o crear categoría…"
+            onCrear={crearCategoria}
+            textoVacio="No hay categorías activas de este tipo."
+          />
+        )}
 
         {esInversion && categoriaId && (
           <Combobox

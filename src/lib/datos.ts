@@ -3,7 +3,7 @@ import { rangoMes, type Mes, type Moneda } from './format'
 import { supabase } from './supabase'
 
 export type TipoCategoria = 'gasto' | 'ingreso' | 'inversion'
-export type TipoMovimiento = 'gasto' | 'ingreso' | 'aporte' | 'rescate'
+export type TipoMovimiento = 'gasto' | 'ingreso' | 'aporte' | 'rescate' | 'pago_tarjeta'
 export type FormaPago = 'efectivo' | 'debito' | 'credito' | 'transferencia' | 'billetera'
 
 export type Categoria = {
@@ -22,7 +22,8 @@ export type Movimiento = {
   tipo: TipoMovimiento
   monto: number
   moneda: Moneda
-  categoria_id: string
+  /** null solo en pagos de tarjeta. */
+  categoria_id: string | null
   forma_pago: FormaPago | null
   nota: string | null
   /** Subcategoría de inversión (BTC, AAPL…). Solo inversiones. */
@@ -56,6 +57,7 @@ export const TEXTO_TIPO: Record<TipoMovimiento, string> = {
   ingreso: 'Ingreso',
   aporte: 'Invertí',
   rescate: 'Retiré de inversión',
+  pago_tarjeta: 'Pago de tarjeta',
 }
 
 export const FORMAS_PAGO: { valor: FormaPago; texto: string }[] = [
@@ -72,7 +74,7 @@ export const TEXTO_FORMA_PAGO = Object.fromEntries(FORMAS_PAGO.map((f) => [f.val
 >
 
 /** Qué tipo de categoría usa cada tipo de movimiento. */
-export function tipoCategoriaDe(tipo: TipoMovimiento): TipoCategoria {
+export function tipoCategoriaDe(tipo: Exclude<TipoMovimiento, 'pago_tarjeta'>): TipoCategoria {
   return tipo === 'aporte' || tipo === 'rescate' ? 'inversion' : tipo
 }
 
@@ -136,7 +138,27 @@ export async function obtenerMovimiento(id: string): Promise<Movimiento | null> 
   return data ? normalizar(data) : null
 }
 
-export type Totales = { ingresos: number; gastos: number; aportes: number; rescates: number }
+export type Totales = {
+  ingresos: number
+  gastos: number
+  /** Parte de los gastos hecha con tarjeta de crédito. */
+  gastosCredito: number
+  aportes: number
+  rescates: number
+  pagosTarjeta: number
+  /** Plata de esta moneda usada para comprar moneda extranjera (neto de ventas). */
+  usadoEnDivisas: number
+}
+
+const totalesVacios = (): Totales => ({
+  ingresos: 0,
+  gastos: 0,
+  gastosCredito: 0,
+  aportes: 0,
+  rescates: 0,
+  pagosTarjeta: 0,
+  usadoEnDivisas: 0,
+})
 
 /**
  * Totales del mes por moneda (sin convertir: cada moneda por separado).
@@ -146,12 +168,29 @@ export type Totales = { ingresos: number; gastos: number; aportes: number; resca
 export function totalesPorMoneda(movs: Movimiento[], activos: Activo[] = []): Map<Moneda, Totales> {
   const divisaDe = new Map(activos.map((a) => [a.id, a.divisa]))
   const t = new Map<Moneda, Totales>()
+  const de = (moneda: Moneda) => {
+    if (!t.has(moneda)) t.set(moneda, totalesVacios())
+    return t.get(moneda)!
+  }
   for (const m of movs) {
     const divisa = m.activo_id ? divisaDe.get(m.activo_id) : null
-    const [moneda, monto] = divisa && m.cantidad ? [divisa, m.cantidad] : [m.moneda, m.monto]
-    if (!t.has(moneda)) t.set(moneda, { ingresos: 0, gastos: 0, aportes: 0, rescates: 0 })
-    const k = m.tipo === 'gasto' ? 'gastos' : m.tipo === 'ingreso' ? 'ingresos' : m.tipo === 'aporte' ? 'aportes' : 'rescates'
-    t.get(moneda)![k] += monto
+    if (divisa && m.cantidad) {
+      // Compra/venta de moneda extranjera: cuenta en esa moneda por la cantidad…
+      const signo = m.tipo === 'aporte' ? 1 : -1
+      if (m.tipo === 'aporte') de(divisa).aportes += m.cantidad
+      else de(divisa).rescates += m.cantidad
+      // …y se registra cuánto de la moneda de pago se usó.
+      de(m.moneda).usadoEnDivisas += signo * m.monto
+      continue
+    }
+    const x = de(m.moneda)
+    if (m.tipo === 'gasto') {
+      x.gastos += m.monto
+      if (m.forma_pago === 'credito') x.gastosCredito += m.monto
+    } else if (m.tipo === 'ingreso') x.ingresos += m.monto
+    else if (m.tipo === 'aporte') x.aportes += m.monto
+    else if (m.tipo === 'rescate') x.rescates += m.monto
+    else if (m.tipo === 'pago_tarjeta') x.pagosTarjeta += m.monto
   }
   return t
 }
@@ -170,7 +209,7 @@ export function gastosPorCategoria(movs: Movimiento[], moneda: Moneda, categoria
   const nombres = new Map(categorias.map((c) => [c.id, c.nombre]))
   const acc = new Map<string, number>()
   for (const m of movs) {
-    if (m.tipo !== 'gasto' || m.moneda !== moneda) continue
+    if (m.tipo !== 'gasto' || m.moneda !== moneda || !m.categoria_id) continue
     acc.set(m.categoria_id, (acc.get(m.categoria_id) ?? 0) + m.monto)
   }
   return [...acc.entries()]

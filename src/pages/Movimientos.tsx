@@ -4,7 +4,7 @@ import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useActivos, useCategorias, useMovimientos
 import { formatCantidad, formatMonto, formatPrecio, nombreDia } from '../lib/format'
 import { SelectorMes, useMes } from '../lib/mes'
 
-const SIGNO: Record<Movimiento['tipo'], string> = { gasto: '−', ingreso: '+', aporte: '→', rescate: '←' }
+const SIGNO: Record<Movimiento['tipo'], string> = { gasto: '−', ingreso: '+', aporte: '→', rescate: '←', pago_tarjeta: '−' }
 
 export default function Movimientos() {
   const { mes } = useMes()
@@ -44,7 +44,7 @@ export default function Movimientos() {
                   <Link to={`/movimiento/${m.id}`} className="fila">
                     <div>
                       <div>
-                        {nombres.get(m.categoria_id) ?? '—'}
+                        {m.categoria_id ? (nombres.get(m.categoria_id) ?? '—') : 'Pago de tarjeta'}
                         {m.activo_id && <span className="muted"> · {nombresActivo.get(m.activo_id)}</span>}
                       </div>
                       <div className="muted chico">

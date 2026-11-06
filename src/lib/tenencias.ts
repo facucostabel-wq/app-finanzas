@@ -26,6 +26,7 @@ export type Tenencia = {
 export function calcularTenencias(movs: Movimiento[]): Tenencia[] {
   const mapa = new Map<string, Tenencia>()
   for (const m of movs) {
+    if (!m.categoria_id) continue
     const clave = `${m.activo_id ?? `cat:${m.categoria_id}`}|${m.moneda}`
     let t = mapa.get(clave)
     if (!t) {
