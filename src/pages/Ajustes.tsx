@@ -24,7 +24,7 @@ export default function Ajustes() {
   const [error, setError] = useState<string | null>(null)
   const favoritas = perfil?.monedas_favoritas ?? []
   const { saldos, recargar: recargarSaldos } = useSaldosIniciales()
-  const [fechaSaldo, setFechaSaldo] = useState(hoyISO())
+  const [fechaSaldo, setFechaSaldo] = useState('')
   const [textoSaldo, setTextoSaldo] = useState<Record<string, string>>({})
   const [guardandoSaldo, setGuardandoSaldo] = useState(false)
   const [okSaldo, setOkSaldo] = useState(false)
@@ -32,7 +32,7 @@ export default function Ajustes() {
 
   // Precarga lo guardado.
   useEffect(() => {
-    if (perfil?.saldo_inicial_fecha) setFechaSaldo(perfil.saldo_inicial_fecha)
+    setFechaSaldo(perfil?.saldo_inicial_fecha ?? '')
   }, [perfil?.saldo_inicial_fecha])
   useEffect(() => {
     setTextoSaldo(Object.fromEntries([...saldos.entries()].map(([m, v]) => [m, montoAEditable(v)])))
@@ -54,7 +54,7 @@ export default function Ajustes() {
       filas.push({ moneda: m, monto: v })
     }
     setGuardandoSaldo(true)
-    const r1 = await supabase.from('perfiles').update({ saldo_inicial_fecha: fechaSaldo }).eq('id', session!.user.id)
+    const r1 = await supabase.from('perfiles').update({ saldo_inicial_fecha: fechaSaldo || null }).eq('id', session!.user.id)
     const r2 = filas.length
       ? await supabase.from('saldos_iniciales').upsert(filas, { onConflict: 'usuario_id,moneda' })
       : { error: null }
@@ -119,13 +119,22 @@ export default function Ajustes() {
       <section className="card">
         <h2>Saldo inicial</h2>
         <p className="muted chico">
-          Cuánta plata disponible tenías (sin contar inversiones) en la fecha indicada. El dinero disponible del resumen
-          arranca desde acá; los movimientos anteriores a esa fecha no suman.
+          Cuánta plata para gastar tenías (sin contar inversiones) antes de tu primer movimiento cargado. El dinero
+          disponible del resumen arranca desde acá.
         </p>
         <label>
-          Fecha
-          <input type="date" value={fechaSaldo} onChange={(e) => setFechaSaldo(e.target.value)} />
+          Desde (opcional)
+          <input type="date" value={fechaSaldo} max={hoyISO()} onChange={(e) => setFechaSaldo(e.target.value)} />
+          <small className="muted">
+            Dejalo vacío para que cuenten todos tus movimientos. Si ponés una fecha, los movimientos anteriores a ese
+            día no suman (sirve si cargaste gastos viejos que ya están reflejados en el saldo).
+          </small>
         </label>
+        {fechaSaldo && (
+          <button className="link" onClick={() => setFechaSaldo('')}>
+            Quitar fecha
+          </button>
+        )}
         {monedasSaldo.map((m) => (
           <label key={m}>
             {m} <span className="muted chico">{nombreMoneda(m)}</span>
