@@ -210,3 +210,38 @@ export function useInversiones() {
   }, [])
   return { movimientos, loading, error }
 }
+
+/** Saldos iniciales por moneda (lo que el usuario tenía al empezar a usar la app). */
+export function useSaldosIniciales() {
+  const [saldos, setSaldos] = useState<Map<Moneda, number>>(new Map())
+  const [loading, setLoading] = useState(true)
+  const recargar = useCallback(async () => {
+    const { data } = await supabase.from('saldos_iniciales').select('moneda, monto')
+    setSaldos(new Map((data ?? []).map((r) => [r.moneda as string, Number(r.monto)])))
+    setLoading(false)
+  }, [])
+  useEffect(() => {
+    recargar()
+  }, [recargar])
+  return { saldos, loading, recargar }
+}
+
+/**
+ * Dinero disponible al cierre del mes, por moneda:
+ * saldo inicial + ingresos − gastos − invertido + retirado (desde la fecha del saldo inicial).
+ */
+export function useDisponible(mes: Mes) {
+  const [disponible, setDisponible] = useState<Map<Moneda, number>>(new Map())
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const { hasta } = rangoMes(mes)
+    supabase.rpc('disponible_al', { hasta }).then(({ data, error }) => {
+      if (error) setError(error.message)
+      else {
+        setError(null)
+        setDisponible(new Map(((data ?? []) as { moneda: string; monto: number }[]).map((r) => [r.moneda, Number(r.monto)])))
+      }
+    })
+  }, [mes])
+  return { disponible, error }
+}

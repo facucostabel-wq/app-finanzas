@@ -4,7 +4,13 @@ import { supabase } from './supabase'
 
 export const MONEDAS_POR_DEFECTO = ['ARS', 'USD', 'EUR']
 
-export type Perfil = { nombre: string; consentimiento_at: string | null; monedas_favoritas: string[] }
+export type Perfil = {
+  nombre: string
+  consentimiento_at: string | null
+  monedas_favoritas: string[]
+  /** Desde cuándo vale el saldo inicial (null si la base todavía no tiene la columna). */
+  saldo_inicial_fecha: string | null
+}
 
 type PerfilState = { perfil: Perfil | null; loading: boolean; recargar: () => Promise<void> }
 
@@ -26,7 +32,7 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
     // RLS garantiza que esta consulta solo puede devolver el perfil propio.
     const completo = await supabase
       .from('perfiles')
-      .select('nombre, consentimiento_at, monedas_favoritas')
+      .select('nombre, consentimiento_at, monedas_favoritas, saldo_inicial_fecha')
       .eq('id', userId)
       .maybeSingle()
     let data: Partial<Perfil> | null = completo.data
@@ -41,6 +47,7 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
             nombre: data.nombre ?? '',
             consentimiento_at: data.consentimiento_at ?? null,
             monedas_favoritas: data.monedas_favoritas?.length ? data.monedas_favoritas : MONEDAS_POR_DEFECTO,
+            saldo_inicial_fecha: data.saldo_inicial_fecha ?? null,
           }
         : null,
     )

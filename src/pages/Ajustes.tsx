@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
 import { useAuth } from '../lib/auth'
-import { useCategorias, type Categoria, type TipoCategoria } from '../lib/datos'
+import { useCategorias, useSaldosIniciales, type Categoria, type TipoCategoria } from '../lib/datos'
+import { hoyISO, montoAEditable, parseMonto } from '../lib/format'
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
@@ -22,6 +23,48 @@ export default function Ajustes() {
   const [nueva, setNueva] = useState('')
   const [error, setError] = useState<string | null>(null)
   const favoritas = perfil?.monedas_favoritas ?? []
+  const { saldos, recargar: recargarSaldos } = useSaldosIniciales()
+  const [fechaSaldo, setFechaSaldo] = useState(hoyISO())
+  const [textoSaldo, setTextoSaldo] = useState<Record<string, string>>({})
+  const [guardandoSaldo, setGuardandoSaldo] = useState(false)
+  const [okSaldo, setOkSaldo] = useState(false)
+  const monedasSaldo = [...new Set([...favoritas, ...saldos.keys()])]
+
+  // Precarga lo guardado.
+  useEffect(() => {
+    if (perfil?.saldo_inicial_fecha) setFechaSaldo(perfil.saldo_inicial_fecha)
+  }, [perfil?.saldo_inicial_fecha])
+  useEffect(() => {
+    setTextoSaldo(Object.fromEntries([...saldos.entries()].map(([m, v]) => [m, montoAEditable(v)])))
+  }, [saldos])
+
+  async function guardarSaldo() {
+    setError(null)
+    setOkSaldo(false)
+    const filas: { moneda: string; monto: number }[] = []
+    const borrar: string[] = []
+    for (const m of monedasSaldo) {
+      const t = (textoSaldo[m] ?? '').trim()
+      if (!t || t === '0') {
+        borrar.push(m)
+        continue
+      }
+      const v = parseMonto(t)
+      if (!v) return setError(`El saldo de ${m} no es un número válido.`)
+      filas.push({ moneda: m, monto: v })
+    }
+    setGuardandoSaldo(true)
+    const r1 = await supabase.from('perfiles').update({ saldo_inicial_fecha: fechaSaldo }).eq('id', session!.user.id)
+    const r2 = filas.length
+      ? await supabase.from('saldos_iniciales').upsert(filas, { onConflict: 'usuario_id,moneda' })
+      : { error: null }
+    const r3 = borrar.length ? await supabase.from('saldos_iniciales').delete().in('moneda', borrar) : { error: null }
+    setGuardandoSaldo(false)
+    const err = r1.error ?? r2.error ?? r3.error
+    if (err) return setError(`No se pudo guardar el saldo inicial: ${err.message}`)
+    await Promise.all([recargarSaldos(), recargarPerfil()])
+    setOkSaldo(true)
+  }
 
   async function guardarFavoritas(lista: string[]) {
     setError(null)
@@ -72,6 +115,36 @@ export default function Ajustes() {
       </header>
 
       {error && <p className="error">{error}</p>}
+
+      <section className="card">
+        <h2>Saldo inicial</h2>
+        <p className="muted chico">
+          Cuánta plata disponible tenías (sin contar inversiones) en la fecha indicada. El dinero disponible del resumen
+          arranca desde acá; los movimientos anteriores a esa fecha no suman.
+        </p>
+        <label>
+          Fecha
+          <input type="date" value={fechaSaldo} onChange={(e) => setFechaSaldo(e.target.value)} />
+        </label>
+        {monedasSaldo.map((m) => (
+          <label key={m}>
+            {m} <span className="muted chico">{nombreMoneda(m)}</span>
+            <input
+              inputMode="decimal"
+              placeholder="0"
+              value={textoSaldo[m] ?? ''}
+              onChange={(e) => {
+                setOkSaldo(false)
+                setTextoSaldo({ ...textoSaldo, [m]: e.target.value })
+              }}
+            />
+          </label>
+        ))}
+        {okSaldo && <p className="info">Saldo inicial guardado.</p>}
+        <button className="primary" onClick={guardarSaldo} disabled={guardandoSaldo}>
+          {guardandoSaldo ? 'Guardando…' : 'Guardar saldo inicial'}
+        </button>
+      </section>
 
       <section className="card">
         <h2>Monedas favoritas</h2>

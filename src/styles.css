@@ -263,3 +263,7 @@ button.link-texto { background: none; border: 0; color: var(--text); font-size: 
 .tenencia { padding: 14px 0; display: flex; flex-direction: column; gap: 8px; }
 .tenencia-cabecera { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .positivo { color: var(--accent); }
+
+/* ---------- Dinero disponible ---------- */
+.disponible .totales dd { font-size: 1.35rem; }
+.disponible a { color: var(--accent); }

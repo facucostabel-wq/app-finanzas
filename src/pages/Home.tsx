@@ -7,9 +7,11 @@ import {
   totalesPorMoneda,
   useActivos,
   useCategorias,
+  useDisponible,
   useMovimientosDelMes,
+  useSaldosIniciales,
 } from '../lib/datos'
-import { formatMonto, type Moneda } from '../lib/format'
+import { formatMonto, mesActual, nombreMes, type Moneda } from '../lib/format'
 import { nombreMoneda } from '../lib/monedas'
 import { SelectorMes, useMes } from '../lib/mes'
 import { usePerfil } from '../lib/perfil'
@@ -20,6 +22,8 @@ export default function Home() {
   const { movimientos, loading, error } = useMovimientosDelMes(mes)
   const { categorias } = useCategorias()
   const { activos } = useActivos()
+  const { disponible, error: errorDisponible } = useDisponible(mes)
+  const { saldos, loading: cargandoSaldos } = useSaldosIniciales()
   const [monedaGastos, setMonedaGastos] = useState<Moneda | null>(null)
   const nombre = perfil?.nombre?.split(' ')[0]
   const favoritas = perfil?.monedas_favoritas ?? []
@@ -33,6 +37,11 @@ export default function Home() {
   const porCategoria = gastosPorCategoria(movimientos, monedaBarras, categorias)
   const maximo = porCategoria[0]?.total ?? 0
   const totalGastos = totales.get(monedaBarras)?.gastos ?? 0
+  const monedasDisponible = ordenarMonedas(
+    [...disponible.entries()].filter(([, v]) => Math.abs(v) >= 0.01).map(([m]) => m),
+    favoritas,
+  )
+  const esMesActual = mes === mesActual()
 
   return (
     <main className="screen con-nav">
@@ -42,6 +51,40 @@ export default function Home() {
       <SelectorMes />
 
       {error && <p className="error">No se pudieron cargar los datos: {error}</p>}
+
+      <section className="card disponible">
+        <div className="titulo-con-accion">
+          <h2>Dinero disponible</h2>
+          <span className="muted chico">{esMesActual ? 'hoy' : `al cierre de ${nombreMes(mes).toLowerCase()}`}</span>
+        </div>
+        {errorDisponible ? (
+          <p className="muted chico">Falta ejecutar el SQL del dinero disponible en Supabase.</p>
+        ) : (
+          <>
+            {monedasDisponible.length === 0 ? (
+              <p className="muted">Sin saldo todavía.</p>
+            ) : (
+              <dl className="totales">
+                {monedasDisponible.map((m) => {
+                  const v = disponible.get(m)!
+                  return (
+                    <div key={m} className="destacado-simple">
+                      <dt>{nombreMoneda(m)}</dt>
+                      <dd className={v < 0 ? 'negativo' : ''}>{formatMonto(Math.round(v * 100) / 100, m)}</dd>
+                    </div>
+                  )
+                })}
+              </dl>
+            )}
+            <p className="muted chico">Saldo inicial + ingresos − gastos − invertido + retirado, acumulado mes a mes.</p>
+            {!cargandoSaldos && saldos.size === 0 && (
+              <Link to="/ajustes" className="chico">
+                Cargá tu saldo inicial en Ajustes para que el disponible arranque desde lo que tenés hoy.
+              </Link>
+            )}
+          </>
+        )}
+      </section>
 
       {loading ? (
         <p className="muted">Cargando…</p>
