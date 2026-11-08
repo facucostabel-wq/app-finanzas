@@ -146,6 +146,13 @@ from public.movimientos m
 where m.forma_pago = 'credito' or m.tipo = 'pago_tarjeta'
 on conflict (usuario_id, nombre) do nothing;
 
+-- Esa tarjeta queda dentro de "Principal" (se ve y se edita junto con la cuenta).
+update public.cuentas t
+   set cuenta_padre_id = c.id
+  from public.cuentas c
+ where t.nombre = 'Tarjeta de crédito' and t.tipo = 'tarjeta' and t.cuenta_padre_id is null
+   and c.usuario_id = t.usuario_id and c.nombre = 'Principal';
+
 -- Gastos con crédito → la tarjeta.
 update public.movimientos m
    set cuenta_id = c.id
