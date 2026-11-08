@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import {
+  esCuentaDisponible,
   gastosPorCategoria,
   ordenarMonedas,
   totalesPorMoneda,
   useActivos,
   useCategorias,
-  useDisponible,
+  useCuentas,
   useMovimientosDelMes,
+  useSaldosCuentas,
   useSaldosIniciales,
 } from '../lib/datos'
 import { formatMonto, mesActual, moverMes, nombreMes, type Moneda } from '../lib/format'
@@ -23,8 +25,10 @@ export default function Home() {
   const { movimientos, loading, error } = useMovimientosDelMes(mes)
   const { categorias } = useCategorias()
   const { activos } = useActivos()
-  const { disponible, error: errorDisponible } = useDisponible(mes)
+  const { cuentas } = useCuentas()
+  const { saldos: saldosCuentas, error: errorDisponible } = useSaldosCuentas(mes)
   const { saldos, loading: cargandoSaldos } = useSaldosIniciales()
+  const [verCuentas, setVerCuentas] = useState(false)
   const [monedaElegida, setMonedaElegida] = useState<Moneda | null>(null)
   const [verCalculo, setVerCalculo] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
@@ -33,6 +37,29 @@ export default function Home() {
   const favoritas = perfil?.monedas_favoritas ?? []
   const esMesActual = mes === mesActual()
   const nombreDelMes = nombreMes(mes).split(' ')[0]
+
+  // Disponible = suma de bancos, billeteras y efectivo (sin tarjetas ni brokers).
+  const tipoDe = new Map(cuentas.map((c) => [c.id, c.tipo]))
+  const disponible = new Map<Moneda, number>()
+  for (const s of saldosCuentas) {
+    const tipo = tipoDe.get(s.cuenta_id)
+    if (tipo && esCuentaDisponible(tipo)) disponible.set(s.moneda, (disponible.get(s.moneda) ?? 0) + s.monto)
+  }
+  // Saldos por cuenta (para el detalle), solo los que no son cero.
+  const porCuenta = cuentas
+    .map((c) => ({
+      cuenta: c,
+      saldos: ordenarMonedas(
+        saldosCuentas.filter((s) => s.cuenta_id === c.id && Math.abs(s.monto) >= 0.01).map((s) => s.moneda),
+        favoritas,
+      ).map((m) => ({ moneda: m, monto: saldosCuentas.find((s) => s.cuenta_id === c.id && s.moneda === m)!.monto })),
+    }))
+    .filter((x) => x.saldos.length > 0)
+  const grupos: { titulo: string; filas: typeof porCuenta }[] = [
+    { titulo: 'Para gastar', filas: porCuenta.filter((x) => esCuentaDisponible(x.cuenta.tipo)) },
+    { titulo: 'Tarjetas', filas: porCuenta.filter((x) => x.cuenta.tipo === 'tarjeta') },
+    { titulo: 'En brokers', filas: porCuenta.filter((x) => x.cuenta.tipo === 'broker') },
+  ].filter((g) => g.filas.length > 0)
 
   // Disponible: la moneda principal grande, el resto chico debajo.
   const monedasDisponible = ordenarMonedas(
@@ -43,7 +70,7 @@ export default function Home() {
   const montoPrincipal = principal ? disponible.get(principal)! : 0
 
   // Resumen del mes: una moneda por vez.
-  const totales = totalesPorMoneda(movimientos, activos)
+  const totales = totalesPorMoneda(movimientos, activos, cuentas)
   const monedasMes = ordenarMonedas(totales.keys(), favoritas)
   const moneda: Moneda = monedaElegida && monedasMes.includes(monedaElegida) ? monedaElegida : (monedasMes[0] ?? 'ARS')
   const t = totales.get(moneda)
@@ -89,16 +116,49 @@ export default function Home() {
                 ))}
               </p>
             )}
-            <button className="link-discreto" onClick={() => setVerCalculo((v) => !v)} aria-expanded={verCalculo}>
-              {verCalculo ? 'Ocultar cálculo' : '¿Cómo se calcula?'}
-            </button>
+            <div className="hero-acciones">
+              {grupos.length > 0 && (
+                <button className="link-discreto" onClick={() => setVerCuentas((v) => !v)} aria-expanded={verCuentas}>
+                  {verCuentas ? 'Ocultar cuentas' : 'Ver por cuenta'}
+                </button>
+              )}
+              <button className="link-discreto" onClick={() => setVerCalculo((v) => !v)} aria-expanded={verCalculo}>
+                {verCalculo ? 'Ocultar cálculo' : '¿Cómo se calcula?'}
+              </button>
+            </div>
             {verCalculo && (
               <p className="nota">
-                Saldo inicial, más ingresos, menos gastos pagados en el momento (la tarjeta de crédito descuenta cuando
-                pagás el resumen), menos lo invertido, más lo retirado.
+                Es la suma de tus bancos, billeteras y efectivo: saldo inicial, más ingresos, menos gastos, menos lo
+                invertido, más lo retirado. Los consumos con tarjeta descuentan recién cuando pagás el resumen, y la plata
+                en brokers va aparte.
               </p>
             )}
-            {!cargandoSaldos && saldos.size === 0 && (
+            {verCuentas && (
+              <div className="cuentas-detalle">
+                {grupos.map((g) => (
+                  <div key={g.titulo}>
+                    <h3>{g.titulo}</h3>
+                    <ul>
+                      {g.filas.map(({ cuenta, saldos }) => (
+                        <li key={cuenta.id}>
+                          <span>{cuenta.nombre}</span>
+                          <span className="cuentas-montos">
+                            {saldos.map((x) => (
+                              <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' ? 'negativo' : ''}>
+                                {cuenta.tipo === 'tarjeta' && x.monto < 0
+                                  ? `Debés ${formatMonto(redondear(-x.monto), x.moneda)}`
+                                  : formatMonto(redondear(x.monto), x.moneda)}
+                              </span>
+                            ))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!cargandoSaldos && saldos.length === 0 && (
               <Link to="/ajustes" className="aviso">
                 Cargá tu saldo inicial en Ajustes para que este número refleje tu plata real.
               </Link>

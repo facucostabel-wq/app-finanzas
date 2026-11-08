@@ -332,3 +332,33 @@ button.link-texto { background: none; border: 0; color: var(--text); font-size: 
 .categoria-pista { height: 4px; }
 .categoria-barra { height: 4px; background: var(--muted); opacity: .55; border-radius: 0 2px 2px 0; min-width: 2px; }
 .categorias li:first-child .categoria-barra { background: var(--accent); opacity: 1; }
+.monto.transferencia { color: var(--muted); font-weight: 500; }
+
+/* ---------- Saldos por cuenta ---------- */
+.hero-acciones { display: flex; gap: 18px; }
+.cuentas-detalle { margin-top: 14px; display: grid; gap: 14px; }
+.cuentas-detalle h3 { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin: 0 0 6px; }
+.cuentas-detalle ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cuentas-detalle li { display: flex; justify-content: space-between; gap: 12px; font-size: 0.95rem; }
+.cuentas-montos { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
+
+/* ---------- Ajustes: cuentas y saldos ---------- */
+.nueva-cuenta { display: grid; grid-template-columns: 1fr; gap: 8px; }
+select {
+  font-size: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg); color: var(--text);
+}
+.saldo-cuenta { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); }
+.saldo-cuenta-nombre { font-weight: 500; }
+.saldo-cuenta-montos { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.saldo-cuenta-montos label { gap: 2px; }
+.saldo-cuenta-montos input { padding: 10px; }
+
+/* ---------- Cuentas ---------- */
+.cuenta-fila { align-items: flex-start; }
+.cuenta-saldos { display: flex; flex-direction: column; align-items: flex-end; color: var(--muted); font-variant-numeric: tabular-nums; }
+.saldo-monedas { display: grid; gap: 8px; }
+.saldo-moneda { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.saldo-moneda input { width: 55%; text-align: right; font-variant-numeric: tabular-nums; }
+.tarjeta-fila { display: flex; gap: 8px; align-items: center; }
+.tarjeta-fila input { flex: 1; min-width: 0; }

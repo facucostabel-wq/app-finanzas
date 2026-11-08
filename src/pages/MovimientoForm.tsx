@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Combobox, { type Opcion } from '../components/Combobox'
 import {
-  FORMAS_PAGO,
   obtenerMovimiento,
+  TEXTO_TIPO_CUENTA,
   useActivos,
   tipoCategoriaDe,
   useCategorias,
-  type FormaPago,
+  useCuentas,
   type TipoMovimiento,
 } from '../lib/datos'
 import { formatPrecio, hoyISO, montoAEditable, parseCantidad, parseMonto } from '../lib/format'
@@ -15,7 +15,24 @@ import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 
-type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'pago_tarjeta'
+type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'transferencia'
+
+// Recuerda la última cuenta usada para cada tipo (comodidad local, no datos sensibles).
+const claveCuenta = (t: TipoMovimiento) => `ultima-cuenta:${t}`
+function leerUltimaCuenta(t: TipoMovimiento): string | null {
+  try {
+    return localStorage.getItem(claveCuenta(t))
+  } catch {
+    return null
+  }
+}
+function guardarUltimaCuenta(t: TipoMovimiento, id: string) {
+  try {
+    localStorage.setItem(claveCuenta(t), id)
+  } catch {
+    /* sin almacenamiento disponible */
+  }
+}
 
 export default function MovimientoForm() {
   const { id } = useParams()
@@ -24,6 +41,7 @@ export default function MovimientoForm() {
   const { perfil } = usePerfil()
   const { categorias, loading: cargandoCategorias, recargar: recargarCategorias } = useCategorias()
   const { activos, recargar: recargarActivos } = useActivos()
+  const { cuentas, loading: cargandoCuentas } = useCuentas()
   const favoritas = perfil?.monedas_favoritas ?? ['ARS']
 
   const [tipo, setTipo] = useState<TipoPantalla>('gasto')
@@ -31,7 +49,8 @@ export default function MovimientoForm() {
   const [montoTexto, setMontoTexto] = useState('')
   const [moneda, setMoneda] = useState(favoritas[0])
   const [categoriaId, setCategoriaId] = useState<string | null>(null)
-  const [formaPago, setFormaPago] = useState<FormaPago | null>(null)
+  const [cuentaId, setCuentaId] = useState<string | null>(null)
+  const [destinoId, setDestinoId] = useState<string | null>(null)
   const [activoId, setActivoId] = useState<string | null>(null)
   const [cantidadTexto, setCantidadTexto] = useState('')
   const [fecha, setFecha] = useState(hoyISO())
@@ -52,7 +71,8 @@ export default function MovimientoForm() {
         setMontoTexto(montoAEditable(m.monto))
         setMoneda(m.moneda)
         setCategoriaId(m.categoria_id)
-        setFormaPago(m.forma_pago)
+        setCuentaId(m.cuenta_id)
+        setDestinoId(m.cuenta_destino_id)
         setActivoId(m.activo_id)
         setCantidadTexto(m.cantidad ? montoAEditable(m.cantidad) : '')
         setFecha(m.fecha)
@@ -63,8 +83,8 @@ export default function MovimientoForm() {
   }, [id])
 
   const tipoMovimiento: TipoMovimiento = tipo === 'inversion' ? sentido : tipo
-  const esPagoTarjeta = tipo === 'pago_tarjeta'
-  const tipoCat = tipoMovimiento === 'pago_tarjeta' ? null : tipoCategoriaDe(tipoMovimiento)
+  const esTransferencia = tipo === 'transferencia'
+  const tipoCat = tipoMovimiento === 'transferencia' ? null : tipoCategoriaDe(tipoMovimiento)
   const visibles = categorias.filter(
     (c) => c.tipo === tipoCat && (c.activa || c.id === categoriaId),
   )
@@ -100,7 +120,30 @@ export default function MovimientoForm() {
         })),
       ]
     : delaCategoria.map((a) => ({ valor: a.id, texto: a.nombre }))
-  const opcionesFormaPago: Opcion[] = FORMAS_PAGO.map((f) => ({ valor: f.valor, texto: f.texto }))
+  const cuentasActivas = cuentas.filter((c) => c.activa || c.id === cuentaId || c.id === destinoId)
+  const opcionesCuenta: Opcion[] = cuentasActivas.map((c) => ({
+    valor: c.id,
+    texto: c.nombre,
+    detalle: TEXTO_TIPO_CUENTA[c.tipo],
+  }))
+  const opcionesDestino = opcionesCuenta.filter((o) => o.valor !== cuentaId)
+  const destinoEsTarjeta = cuentas.find((c) => c.id === destinoId)?.tipo === 'tarjeta'
+  const etiquetaCuenta = esTransferencia
+    ? 'Desde'
+    : tipoMovimiento === 'gasto'
+      ? 'Pagaste con'
+      : tipoMovimiento === 'ingreso'
+        ? 'Entró a'
+        : tipoMovimiento === 'aporte'
+          ? 'Sale de'
+          : 'Entra a'
+
+  // Movimiento nuevo: propone la última cuenta usada para este tipo.
+  useEffect(() => {
+    if (editando || cargandoCuentas) return
+    const ultima = leerUltimaCuenta(tipoMovimiento)
+    setCuentaId(ultima && cuentas.some((c) => c.id === ultima && c.activa) ? ultima : null)
+  }, [tipoMovimiento, editando, cargandoCuentas, cuentas])
 
   async function crearActivo(nombre: string): Promise<string | null> {
     const { data, error } = await supabase
@@ -168,8 +211,10 @@ export default function MovimientoForm() {
     e.preventDefault()
     setError(null)
     if (!monto) return setError('Ingresá un monto válido, por ejemplo 12.500 o 12500,50.')
-    if (!esPagoTarjeta && !categoriaId) return setError('Elegí una categoría.')
-    if (tipo === 'gasto' && !formaPago) return setError('Elegí la forma de pago.')
+    if (!esTransferencia && !categoriaId) return setError('Elegí una categoría.')
+    if (!cuentaId) return setError(esTransferencia ? 'Elegí la cuenta de origen.' : 'Elegí la cuenta.')
+    if (esTransferencia && !destinoId) return setError('Elegí la cuenta de destino.')
+    if (esTransferencia && destinoId === cuentaId) return setError('El origen y el destino tienen que ser distintos.')
     if (esInversion && esDivisas && !activoId) return setError('Elegí qué moneda compraste o vendiste.')
     if (esInversion && esDivisas && !cantidad)
       return setError(`Indicá cuántos ${divisa ?? 'de la moneda'} compraste o vendiste.`)
@@ -182,8 +227,10 @@ export default function MovimientoForm() {
       tipo: tipoMovimiento,
       monto,
       moneda,
-      categoria_id: esPagoTarjeta ? null : categoriaId,
-      forma_pago: tipo === 'gasto' ? formaPago : null,
+      categoria_id: esTransferencia ? null : categoriaId,
+      cuenta_id: cuentaId,
+      cuenta_destino_id: esTransferencia ? destinoId : null,
+      forma_pago: null,
       activo_id: esInversion ? activoId : null,
       cantidad: esInversion ? cantidad : null,
       fecha,
@@ -195,6 +242,7 @@ export default function MovimientoForm() {
       : await supabase.from('movimientos').insert(datos)
     setBusy(false)
     if (error) return setError(`No se pudo guardar: ${error.message}`)
+    guardarUltimaCuenta(tipoMovimiento, cuentaId)
     navigate(-1)
   }
 
@@ -207,7 +255,7 @@ export default function MovimientoForm() {
     navigate(-1)
   }
 
-  if (cargando || cargandoCategorias) return <main className="screen center muted">Cargando…</main>
+  if (cargando || cargandoCategorias || cargandoCuentas) return <main className="screen center muted">Cargando…</main>
 
   return (
     <main className="screen">
@@ -226,7 +274,7 @@ export default function MovimientoForm() {
               ['gasto', 'Gasto'],
               ['ingreso', 'Ingreso'],
               ['inversion', 'Inversión'],
-              ['pago_tarjeta', 'Pago tarjeta'],
+              ['transferencia', 'Transferir'],
             ] as [TipoPantalla, string][]
           ).map(([v, t]) => (
             <button type="button" key={v} aria-pressed={tipo === v} onClick={() => cambiarTipo(v)}>
@@ -267,11 +315,38 @@ export default function MovimientoForm() {
           placeholder="Buscar: dólar, real, EUR…"
         />
 
-        {esPagoTarjeta ? (
-          <p className="muted chico">
-            Registrá cuánto pagaste del resumen de la tarjeta. No es un gasto nuevo (los consumos ya están cargados):
-            solo descuenta del dinero disponible.
+        {cuentas.length === 0 && (
+          <p className="aviso">
+            Todavía no tenés cuentas. <Link to="/ajustes">Creá una en Ajustes</Link> (banco, billetera, efectivo o
+            tarjeta) para poder cargar movimientos.
           </p>
+        )}
+
+        {esTransferencia ? (
+          <>
+            <Combobox
+              etiqueta="Desde"
+              opciones={opcionesCuenta}
+              valor={cuentaId}
+              onCambio={(v) => {
+                setCuentaId(v)
+                if (v === destinoId) setDestinoId(null)
+              }}
+              placeholder="Buscar cuenta…"
+            />
+            <Combobox
+              etiqueta="Hacia"
+              opciones={opcionesDestino}
+              valor={destinoId}
+              onCambio={setDestinoId}
+              placeholder="Buscar cuenta…"
+            />
+            <p className="muted chico">
+              {destinoEsTarjeta
+                ? 'Pago de tarjeta: no es un gasto nuevo (los consumos ya están cargados); baja el disponible y la deuda de la tarjeta.'
+                : 'Mueve plata entre tus cuentas: no es gasto ni ingreso y no cambia tu disponible total.'}
+            </p>
+          </>
         ) : (
           <Combobox
             etiqueta="Categoría"
@@ -328,13 +403,13 @@ export default function MovimientoForm() {
           </label>
         )}
 
-        {tipo === 'gasto' && (
+        {!esTransferencia && (
           <Combobox
-            etiqueta="Forma de pago"
-            opciones={opcionesFormaPago}
-            valor={formaPago}
-            onCambio={(v) => setFormaPago(v as FormaPago)}
-            placeholder="Buscar forma de pago…"
+            etiqueta={etiquetaCuenta}
+            opciones={opcionesCuenta}
+            valor={cuentaId}
+            onCambio={setCuentaId}
+            placeholder="Buscar cuenta o tarjeta…"
           />
         )}
 

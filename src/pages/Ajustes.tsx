@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
 import { useAuth } from '../lib/auth'
-import { useCategorias, useSaldosIniciales, type Categoria, type TipoCategoria } from '../lib/datos'
-import { hoyISO, montoAEditable, parseMonto } from '../lib/format'
+import {
+  TEXTO_TIPO_CUENTA,
+  useCategorias,
+  useCuentas,
+  useSaldosCuentas,
+  type Categoria,
+  type TipoCategoria,
+} from '../lib/datos'
+import { formatMonto, hoyISO, mesActual } from '../lib/format'
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
@@ -23,47 +30,28 @@ export default function Ajustes() {
   const [nueva, setNueva] = useState('')
   const [error, setError] = useState<string | null>(null)
   const favoritas = perfil?.monedas_favoritas ?? []
-  const { saldos, recargar: recargarSaldos } = useSaldosIniciales()
+  // Saldo actual de cada cuenta (no el inicial).
+  const { saldos } = useSaldosCuentas(mesActual())
+  const { cuentas } = useCuentas()
   const [fechaSaldo, setFechaSaldo] = useState('')
-  const [textoSaldo, setTextoSaldo] = useState<Record<string, string>>({})
-  const [guardandoSaldo, setGuardandoSaldo] = useState(false)
-  const [okSaldo, setOkSaldo] = useState(false)
-  const monedasSaldo = [...new Set([...favoritas, ...saldos.keys()])]
+  const [okFecha, setOkFecha] = useState(false)
+  const principales = cuentas.filter((c) => !c.cuenta_padre_id)
+  const saldosDe = (cuentaId: string) =>
+    saldos
+      .filter((x) => x.cuenta_id === cuentaId && Math.abs(x.monto) >= 0.01)
+      .map((x) => formatMonto(Math.round(x.monto * 100) / 100, x.moneda))
 
-  // Precarga lo guardado.
   useEffect(() => {
     setFechaSaldo(perfil?.saldo_inicial_fecha ?? '')
   }, [perfil?.saldo_inicial_fecha])
-  useEffect(() => {
-    setTextoSaldo(Object.fromEntries([...saldos.entries()].map(([m, v]) => [m, montoAEditable(v)])))
-  }, [saldos])
 
-  async function guardarSaldo() {
+  async function guardarFecha(valor: string) {
     setError(null)
-    setOkSaldo(false)
-    const filas: { moneda: string; monto: number }[] = []
-    const borrar: string[] = []
-    for (const m of monedasSaldo) {
-      const t = (textoSaldo[m] ?? '').trim()
-      if (!t || t === '0') {
-        borrar.push(m)
-        continue
-      }
-      const v = parseMonto(t)
-      if (!v) return setError(`El saldo de ${m} no es un número válido.`)
-      filas.push({ moneda: m, monto: v })
-    }
-    setGuardandoSaldo(true)
-    const r1 = await supabase.from('perfiles').update({ saldo_inicial_fecha: fechaSaldo || null }).eq('id', session!.user.id)
-    const r2 = filas.length
-      ? await supabase.from('saldos_iniciales').upsert(filas, { onConflict: 'usuario_id,moneda' })
-      : { error: null }
-    const r3 = borrar.length ? await supabase.from('saldos_iniciales').delete().in('moneda', borrar) : { error: null }
-    setGuardandoSaldo(false)
-    const err = r1.error ?? r2.error ?? r3.error
-    if (err) return setError(`No se pudo guardar el saldo inicial: ${err.message}`)
-    await Promise.all([recargarSaldos(), recargarPerfil()])
-    setOkSaldo(true)
+    setOkFecha(false)
+    const { error } = await supabase.from('perfiles').update({ saldo_inicial_fecha: valor || null }).eq('id', session!.user.id)
+    if (error) return setError(`No se pudo guardar la fecha: ${error.message}`)
+    await recargarPerfil()
+    setOkFecha(true)
   }
 
   async function guardarFavoritas(lista: string[]) {
@@ -117,47 +105,61 @@ export default function Ajustes() {
       {error && <p className="error">{error}</p>}
 
       <section className="card">
-        <h2>Saldo inicial</h2>
-        <p className="muted chico">
-          Cuánta plata para gastar tenías (sin contar inversiones) antes de tu primer movimiento cargado. El dinero
-          disponible del resumen arranca desde acá.
-        </p>
-        <label>
-          Desde (opcional)
-          <input type="date" value={fechaSaldo} max={hoyISO()} onChange={(e) => setFechaSaldo(e.target.value)} />
-          <small className="muted">
-            Dejalo vacío para que cuenten todos tus movimientos. Si ponés una fecha, los movimientos anteriores a ese
-            día no suman (sirve si cargaste gastos viejos que ya están reflejados en el saldo).
-          </small>
-        </label>
-        {fechaSaldo && (
-          <button className="link" onClick={() => setFechaSaldo('')}>
-            Quitar fecha
-          </button>
-        )}
-        {monedasSaldo.map((m) => (
-          <label key={m}>
-            {m} <span className="muted chico">{nombreMoneda(m)}</span>
-            <input
-              inputMode="decimal"
-              placeholder="0"
-              value={textoSaldo[m] ?? ''}
-              onChange={(e) => {
-                setOkSaldo(false)
-                setTextoSaldo({ ...textoSaldo, [m]: e.target.value })
-              }}
-            />
-          </label>
-        ))}
-        {okSaldo && <p className="info">Saldo inicial guardado.</p>}
-        <button className="primary" onClick={guardarSaldo} disabled={guardandoSaldo}>
-          {guardandoSaldo ? 'Guardando…' : 'Guardar saldo inicial'}
-        </button>
+        <h2>Cuentas</h2>
+        <p className="muted chico">Bancos, billeteras, efectivo y brokers, con sus saldos y tarjetas de crédito.</p>
+        <ul className="lista">
+          {principales.map((c) => {
+            const hijas = cuentas.filter((x) => x.cuenta_padre_id === c.id)
+            const montos = saldosDe(c.id)
+            return (
+              <li key={c.id}>
+                <Link to={`/cuentas/${c.id}`} className={`fila cuenta-fila ${c.activa ? '' : 'inactiva'}`}>
+                  <div>
+                    <div>{c.nombre}</div>
+                    <div className="muted chico">
+                      {TEXTO_TIPO_CUENTA[c.tipo]}
+                      {hijas.length > 0 && `, con ${hijas.map((h) => h.nombre).join(' y ')}`}
+                      {!c.activa && ' (oculta)'}
+                    </div>
+                  </div>
+                  <div className="cuenta-saldos chico">
+                    {montos.map((m) => (
+                      <span key={m}>{m}</span>
+                    ))}
+                  </div>
+                </Link>
+              </li>
+            )
+          })}
+          {principales.length === 0 && <li className="muted">Todavía no tenés cuentas.</li>}
+        </ul>
+        <Link to="/cuentas/nueva" className="primary boton">
+          + Agregar cuenta
+        </Link>
+        <details className="detalle">
+          <summary>Fecha de los saldos (opcional)</summary>
+          <p className="muted chico">
+            Si cargaste movimientos viejos que ya están reflejados en los saldos, poné desde qué día contar. Vacío =
+            cuentan todos.
+          </p>
+          <div className="agregar">
+            <input type="date" value={fechaSaldo} max={hoyISO()} onChange={(e) => setFechaSaldo(e.target.value)} />
+            <button className="secundario" onClick={() => guardarFecha(fechaSaldo)}>
+              Guardar
+            </button>
+          </div>
+          {fechaSaldo && (
+            <button className="link" onClick={() => { setFechaSaldo(''); guardarFecha('') }}>
+              Quitar fecha
+            </button>
+          )}
+          {okFecha && <p className="info">Fecha guardada.</p>}
+        </details>
       </section>
 
       <section className="card">
         <h2>Monedas favoritas</h2>
-        <p className="muted chico">Aparecen como botones al cargar. La primera es la que viene marcada.</p>
+        <p className="muted chico">Aparecen primero en la lista de monedas. La primera es la que viene elegida al cargar.</p>
         <ul className="lista">
           {favoritas.map((m, i) => (
             <li key={m} className="fila">

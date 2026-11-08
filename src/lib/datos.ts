@@ -3,7 +3,7 @@ import { rangoMes, type Mes, type Moneda } from './format'
 import { supabase } from './supabase'
 
 export type TipoCategoria = 'gasto' | 'ingreso' | 'inversion'
-export type TipoMovimiento = 'gasto' | 'ingreso' | 'aporte' | 'rescate' | 'pago_tarjeta'
+export type TipoMovimiento = 'gasto' | 'ingreso' | 'aporte' | 'rescate' | 'transferencia'
 export type FormaPago = 'efectivo' | 'debito' | 'credito' | 'transferencia' | 'billetera'
 
 export type Categoria = {
@@ -22,14 +22,61 @@ export type Movimiento = {
   tipo: TipoMovimiento
   monto: number
   moneda: Moneda
-  /** null solo en pagos de tarjeta. */
+  /** null solo en transferencias. */
   categoria_id: string | null
+  /** Dato histórico (antes de las cuentas). Ya no se carga. */
   forma_pago: FormaPago | null
+  /** Cuenta de la que sale o a la que entra la plata (origen, en transferencias). */
+  cuenta_id: string
+  /** Solo transferencias: cuenta que recibe. */
+  cuenta_destino_id: string | null
   nota: string | null
   /** Subcategoría de inversión (BTC, AAPL…). Solo inversiones. */
   activo_id: string | null
   /** Unidades compradas o vendidas. Solo inversiones. */
   cantidad: number | null
+}
+
+export type TipoCuenta = 'banco' | 'billetera' | 'efectivo' | 'tarjeta' | 'broker'
+
+export type Cuenta = {
+  id: string
+  nombre: string
+  tipo: TipoCuenta
+  orden: number
+  activa: boolean
+  /** Solo tarjetas: la cuenta a la que pertenecen (ej. "Visa Galicia" → "Galicia"). */
+  cuenta_padre_id: string | null
+}
+
+export const TIPOS_CUENTA: { valor: TipoCuenta; texto: string }[] = [
+  { valor: 'banco', texto: 'Banco' },
+  { valor: 'billetera', texto: 'Billetera virtual' },
+  { valor: 'efectivo', texto: 'Efectivo' },
+  { valor: 'tarjeta', texto: 'Tarjeta de crédito' },
+  { valor: 'broker', texto: 'Broker / exchange' },
+]
+
+export const TEXTO_TIPO_CUENTA = Object.fromEntries(TIPOS_CUENTA.map((t) => [t.valor, t.texto])) as Record<
+  TipoCuenta,
+  string
+>
+
+/** Cuentas cuyo saldo es "disponible para gastar" (no tarjetas ni brokers). */
+export const esCuentaDisponible = (tipo: TipoCuenta) => tipo === 'banco' || tipo === 'billetera' || tipo === 'efectivo'
+
+export function useCuentas() {
+  const [cuentas, setCuentas] = useState<Cuenta[]>([])
+  const [loading, setLoading] = useState(true)
+  const recargar = useCallback(async () => {
+    const { data } = await supabase.from('cuentas').select('id, nombre, tipo, orden, activa, cuenta_padre_id').order('orden').order('nombre')
+    setCuentas((data ?? []) as Cuenta[])
+    setLoading(false)
+  }, [])
+  useEffect(() => {
+    recargar()
+  }, [recargar])
+  return { cuentas, loading, recargar }
 }
 
 /** Subcategoría de inversión: BTC dentro de Cripto, AAPL dentro de CEDEARs… */
@@ -42,7 +89,8 @@ export type Activo = {
   divisa: string | null
 }
 
-const CAMPOS_MOV = 'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad'
+const CAMPOS_MOV =
+  'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad, cuenta_id, cuenta_destino_id'
 
 // numeric llega como string desde la API: lo pasamos a número.
 function normalizar(m: Record<string, unknown>): Movimiento {
@@ -57,7 +105,7 @@ export const TEXTO_TIPO: Record<TipoMovimiento, string> = {
   ingreso: 'Ingreso',
   aporte: 'Invertí',
   rescate: 'Retiré de inversión',
-  pago_tarjeta: 'Pago de tarjeta',
+  transferencia: 'Transferencia',
 }
 
 export const FORMAS_PAGO: { valor: FormaPago; texto: string }[] = [
@@ -74,7 +122,7 @@ export const TEXTO_FORMA_PAGO = Object.fromEntries(FORMAS_PAGO.map((f) => [f.val
 >
 
 /** Qué tipo de categoría usa cada tipo de movimiento. */
-export function tipoCategoriaDe(tipo: Exclude<TipoMovimiento, 'pago_tarjeta'>): TipoCategoria {
+export function tipoCategoriaDe(tipo: Exclude<TipoMovimiento, 'transferencia'>): TipoCategoria {
   return tipo === 'aporte' || tipo === 'rescate' ? 'inversion' : tipo
 }
 
@@ -165,8 +213,13 @@ const totalesVacios = (): Totales => ({
  * Las compras/ventas de moneda extranjera cuentan en esa moneda, por la cantidad
  * comprada o vendida, no por lo que se pagó en pesos.
  */
-export function totalesPorMoneda(movs: Movimiento[], activos: Activo[] = []): Map<Moneda, Totales> {
+export function totalesPorMoneda(
+  movs: Movimiento[],
+  activos: Activo[] = [],
+  cuentas: Cuenta[] = [],
+): Map<Moneda, Totales> {
   const divisaDe = new Map(activos.map((a) => [a.id, a.divisa]))
+  const tipoCuenta = new Map(cuentas.map((c) => [c.id, c.tipo]))
   const t = new Map<Moneda, Totales>()
   const de = (moneda: Moneda) => {
     if (!t.has(moneda)) t.set(moneda, totalesVacios())
@@ -186,11 +239,12 @@ export function totalesPorMoneda(movs: Movimiento[], activos: Activo[] = []): Ma
     const x = de(m.moneda)
     if (m.tipo === 'gasto') {
       x.gastos += m.monto
-      if (m.forma_pago === 'credito') x.gastosCredito += m.monto
+      if (tipoCuenta.get(m.cuenta_id) === 'tarjeta') x.gastosCredito += m.monto
     } else if (m.tipo === 'ingreso') x.ingresos += m.monto
     else if (m.tipo === 'aporte') x.aportes += m.monto
     else if (m.tipo === 'rescate') x.rescates += m.monto
-    else if (m.tipo === 'pago_tarjeta') x.pagosTarjeta += m.monto
+    else if (m.tipo === 'transferencia' && m.cuenta_destino_id && tipoCuenta.get(m.cuenta_destino_id) === 'tarjeta')
+      x.pagosTarjeta += m.monto
   }
   return t
 }
@@ -250,13 +304,15 @@ export function useInversiones() {
   return { movimientos, loading, error }
 }
 
-/** Saldos iniciales por moneda (lo que el usuario tenía al empezar a usar la app). */
+export type SaldoInicial = { cuenta_id: string; moneda: Moneda; monto: number }
+
+/** Saldos iniciales por cuenta y moneda (lo que había al empezar a usar la app). */
 export function useSaldosIniciales() {
-  const [saldos, setSaldos] = useState<Map<Moneda, number>>(new Map())
+  const [saldos, setSaldos] = useState<SaldoInicial[]>([])
   const [loading, setLoading] = useState(true)
   const recargar = useCallback(async () => {
-    const { data } = await supabase.from('saldos_iniciales').select('moneda, monto')
-    setSaldos(new Map((data ?? []).map((r) => [r.moneda as string, Number(r.monto)])))
+    const { data } = await supabase.from('saldos_iniciales').select('cuenta_id, moneda, monto')
+    setSaldos((data ?? []).map((r) => ({ cuenta_id: r.cuenta_id, moneda: r.moneda, monto: Number(r.monto) })))
     setLoading(false)
   }, [])
   useEffect(() => {
@@ -265,22 +321,25 @@ export function useSaldosIniciales() {
   return { saldos, loading, recargar }
 }
 
-/**
- * Dinero disponible al cierre del mes, por moneda:
- * saldo inicial + ingresos − gastos − invertido + retirado (desde la fecha del saldo inicial).
- */
-export function useDisponible(mes: Mes) {
-  const [disponible, setDisponible] = useState<Map<Moneda, number>>(new Map())
+/** Saldo de cada cuenta, por moneda, al cierre del mes (o hoy, si es el mes actual). */
+export function useSaldosCuentas(mes: Mes) {
+  const [saldos, setSaldos] = useState<SaldoInicial[]>([])
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     const { hasta } = rangoMes(mes)
-    supabase.rpc('disponible_al', { hasta }).then(({ data, error }) => {
+    supabase.rpc('saldos_al', { hasta }).then(({ data, error }) => {
       if (error) setError(error.message)
       else {
         setError(null)
-        setDisponible(new Map(((data ?? []) as { moneda: string; monto: number }[]).map((r) => [r.moneda, Number(r.monto)])))
+        setSaldos(
+          ((data ?? []) as { cuenta_id: string; moneda: string; monto: number }[]).map((r) => ({
+            cuenta_id: r.cuenta_id,
+            moneda: r.moneda,
+            monto: Number(r.monto),
+          })),
+        )
       }
     })
   }, [mes])
-  return { disponible, error }
+  return { saldos, error }
 }
