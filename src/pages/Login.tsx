@@ -68,7 +68,11 @@ export default function Login() {
         )
       } else if (mode === 'ingresar') {
         const { error } = await conTimeout(supabase.auth.signInWithPassword({ email, password }))
-        if (error) throw error
+        if (error) {
+          // Si la cuenta existe pero falta confirmar el email, se ofrece reenviarlo.
+          if (error.code === 'email_not_confirmed' || /email not confirmed/i.test(error.message)) setEmailEnviado(email)
+          throw error
+        }
       } else {
         if (!passwordValida) throw new Error('La contraseña no cumple los requisitos.')
         if (!acepta) throw new Error('Para crear la cuenta tenés que aceptar la política de privacidad.')
@@ -84,7 +88,9 @@ export default function Login() {
         )
         if (error) throw error
         setEmailEnviado(email)
-        setInfo(`Te enviamos un email a ${email} para confirmar la cuenta. Revisá también la carpeta de spam.`)
+        setInfo(
+          `Te enviamos un email a ${email} para confirmar la cuenta. Tocá el link y vas a entrar directo. Revisá también spam.`,
+        )
       }
     } catch (err) {
       setError(traducirError(err))
@@ -241,7 +247,7 @@ export default function Login() {
           </button>
         )}
 
-        {registrarse && emailEnviado && (
+        {!recuperar && emailEnviado && (
           <button type="button" className="link" onClick={reenviar} disabled={busy}>
             ¿No te llegó? Reenviar email
           </button>
