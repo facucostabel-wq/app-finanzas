@@ -27,7 +27,7 @@ export default function Home() {
   const { movimientos, loading, error } = useMovimientosDelMes(mes)
   const { categorias } = useCategorias()
   const { activos } = useActivos()
-  const { cuentas } = useCuentas()
+  const { cuentas, error: errorCuentas } = useCuentas()
   const { saldos: saldosCuentas, error: errorDisponible } = useSaldosCuentas(mes)
   const { saldos, loading: cargandoSaldos } = useSaldosIniciales()
   const [verCuentas, setVerCuentas] = useState(false)
@@ -181,6 +181,7 @@ export default function Home() {
       </section>
 
       {error && <p className="error">No se pudieron cargar los datos: {error}</p>}
+      {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
 
       {loading ? (
         <p className="muted">Cargando…</p>

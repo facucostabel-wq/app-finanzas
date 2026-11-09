@@ -77,15 +77,28 @@ export const esCuentaDisponible = (tipo: TipoCuenta) => tipo === 'banco' || tipo
 export function useCuentas() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const recargar = useCallback(async () => {
-    const { data } = await supabase.from('cuentas').select('id, nombre, tipo, orden, activa, cuenta_padre_id, grupo_id').order('orden').order('nombre')
-    setCuentas((data ?? []) as Cuenta[])
+    const campos = 'id, nombre, tipo, orden, activa, cuenta_padre_id'
+    let { data, error }: { data: unknown[] | null; error: { code?: string; message: string } | null } = await supabase
+      .from('cuentas')
+      .select(`${campos}, grupo_id`)
+      .order('orden')
+      .order('nombre')
+    // Si la base todavía no tiene la migración de grupos, leemos sin esa columna
+    // para que las cuentas no desaparezcan.
+    if (error?.code === '42703') {
+      ;({ data, error } = await supabase.from('cuentas').select(campos).order('orden').order('nombre'))
+    }
+    if (error) setError(error.message)
+    else setError(null)
+    setCuentas(((data ?? []) as Partial<Cuenta>[]).map((c) => ({ grupo_id: null, ...c }) as Cuenta))
     setLoading(false)
   }, [])
   useEffect(() => {
     recargar()
   }, [recargar])
-  return { cuentas, loading, recargar }
+  return { cuentas, loading, error, recargar }
 }
 
 /** Subcategoría de inversión: BTC dentro de Cripto, AAPL dentro de CEDEARs… */

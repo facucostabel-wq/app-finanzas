@@ -32,7 +32,7 @@ export default function Ajustes() {
   const favoritas = perfil?.monedas_favoritas ?? []
   // Saldo actual de cada cuenta (no el inicial).
   const { saldos } = useSaldosCuentas(mesActual())
-  const { cuentas } = useCuentas()
+  const { cuentas, error: errorCuentas } = useCuentas()
   const [fechaSaldo, setFechaSaldo] = useState('')
   const [okFecha, setOkFecha] = useState(false)
   const principales = cuentas.filter((c) => !c.cuenta_padre_id && c.tipo !== 'grupo')
@@ -103,6 +103,7 @@ export default function Ajustes() {
       </header>
 
       {error && <p className="error">{error}</p>}
+      {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
 
       <section className="card">
         <h2>Cuentas</h2>
