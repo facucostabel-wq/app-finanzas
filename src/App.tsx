@@ -4,7 +4,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import Tutorial from './components/Tutorial'
 import { useAuth } from './lib/auth'
 import { usePerfil } from './lib/perfil'
-import { missingVars, supabaseMissingConfig } from './lib/supabase'
+import { missingVars, supabase, supabaseMissingConfig, vinoDeRecuperacion } from './lib/supabase'
 import Ajustes from './pages/Ajustes'
 import Consentimiento from './pages/Consentimiento'
 import GastoGrupoForm from './pages/GastoGrupoForm'
@@ -17,6 +17,7 @@ import Inversiones from './pages/Inversiones'
 import Login from './pages/Login'
 import MovimientoForm from './pages/MovimientoForm'
 import Movimientos from './pages/Movimientos'
+import NuevaClave from './pages/NuevaClave'
 import Privacidad from './pages/Privacidad'
 
 export default function App() {
@@ -24,6 +25,16 @@ export default function App() {
   const { perfil, loading: perfilLoading } = usePerfil()
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Link de "recuperar contraseña": siempre a la pantalla para elegir una nueva,
+  // aunque Supabase lo haya mandado a la página principal.
+  useEffect(() => {
+    if (vinoDeRecuperacion) navigate('/nueva-clave', { replace: true })
+    const { data } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') navigate('/nueva-clave', { replace: true })
+    })
+    return () => data.subscription.unsubscribe()
+  }, [navigate])
 
   // Si alguien abre un link (ej. invitación a un grupo) sin estar logueado, se guarda
   // adónde iba y se lo lleva ahí después de ingresar.
@@ -66,13 +77,14 @@ export default function App() {
   const protegida = (pagina: React.ReactNode) =>
     !session ? <Navigate to="/ingresar" replace /> : faltaConsentimiento ? <Consentimiento /> : pagina
 
-  const verTutorial = session && !faltaConsentimiento && !location.pathname.startsWith('/unirse/') && location.pathname !== '/privacidad'
+  const verTutorial = session && !faltaConsentimiento && !location.pathname.startsWith('/unirse/') && location.pathname !== '/privacidad' && location.pathname !== '/nueva-clave'
 
   return (
     <>
     {verTutorial && <Tutorial key={session.user.id} uid={session.user.id} />}
     <Routes>
       <Route path="/privacidad" element={<Privacidad />} />
+      <Route path="/nueva-clave" element={<NuevaClave />} />
       <Route path="/ingresar" element={session ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={protegida(<Home />)} />
       <Route path="/movimientos" element={protegida(<Movimientos />)} />

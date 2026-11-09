@@ -436,3 +436,7 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .tutorial-nav button:disabled { opacity: 0.4; }
 .tutorial-check { flex-direction: row; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; color: var(--muted); }
 .tutorial-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.recuperar-titulo { display: flex; flex-direction: column; gap: 4px; }
+.recuperar-titulo h2 { margin: 0; font-size: 1.2rem; }
+.recuperar-titulo p { margin: 0; }

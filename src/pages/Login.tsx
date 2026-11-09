@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { Link, useSearchParams } from 'react-router-dom'
+import { errorDeLink, supabase } from '../lib/supabase'
 
-type Mode = 'ingresar' | 'registrarse'
+type Mode = 'ingresar' | 'registrarse' | 'recuperar'
 
 export const MIN_PASSWORD = 10
 const TIMEOUT_MS = 20000
@@ -10,7 +10,7 @@ const TIMEOUT_MS = 20000
 const GOOGLE_HABILITADO = import.meta.env.VITE_HABILITAR_GOOGLE === 'true'
 
 /** Evita que la pantalla quede colgada en "Un momento…" si el servidor no responde. */
-function conTimeout<T>(promesa: Promise<T>): Promise<T> {
+export function conTimeout<T>(promesa: Promise<T>): Promise<T> {
   return Promise.race([
     promesa,
     new Promise<T>((_, reject) =>
@@ -20,25 +20,29 @@ function conTimeout<T>(promesa: Promise<T>): Promise<T> {
 }
 
 /** Reglas de contraseña que se muestran en vivo al crear la cuenta. */
-const REGLAS: { texto: string; cumple: (p: string) => boolean }[] = [
+export const REGLAS: { texto: string; cumple: (p: string) => boolean }[] = [
   { texto: `Al menos ${MIN_PASSWORD} caracteres`, cumple: (p) => p.length >= MIN_PASSWORD },
   { texto: 'Al menos una letra', cumple: (p) => /\p{L}/u.test(p) },
   { texto: 'Al menos un número', cumple: (p) => /\d/.test(p) },
 ]
 
 export default function Login() {
-  const [mode, setMode] = useState<Mode>('ingresar')
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<Mode>(params.has('recuperar') ? 'recuperar' : 'ingresar')
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [verPassword, setVerPassword] = useState(false)
   const [acepta, setAcepta] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    errorDeLink ? 'El link del email venció o ya se usó. Pedí uno nuevo.' : null,
+  )
   const [info, setInfo] = useState<string | null>(null)
   const [emailEnviado, setEmailEnviado] = useState<string | null>(null)
 
   const registrarse = mode === 'registrarse'
+  const recuperar = mode === 'recuperar'
   const passwordValida = REGLAS.every((r) => r.cumple(password))
 
   function cambiarModo(m: Mode) {
@@ -53,7 +57,16 @@ export default function Login() {
     setInfo(null)
     setBusy(true)
     try {
-      if (mode === 'ingresar') {
+      if (recuperar) {
+        const { error } = await conTimeout(
+          supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/nueva-clave` }),
+        )
+        if (error) throw error
+        // El mismo mensaje exista o no la cuenta, para no revelar qué emails están registrados.
+        setInfo(
+          `Si hay una cuenta con ${email.trim()}, te llega un email con un link para elegir una contraseña nueva. Revisá también spam. El link vence en 1 hora.`,
+        )
+      } else if (mode === 'ingresar') {
         const { error } = await conTimeout(supabase.auth.signInWithPassword({ email, password }))
         if (error) throw error
       } else {
@@ -123,6 +136,12 @@ export default function Login() {
         <p className="muted">Tus movimientos, solo para vos.</p>
       </header>
 
+      {recuperar ? (
+        <div className="recuperar-titulo">
+          <h2>Recuperar contraseña</h2>
+          <p className="muted chico">Poné el email de tu cuenta y te mandamos un link para elegir una nueva.</p>
+        </div>
+      ) : (
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={!registrarse} onClick={() => cambiarModo('ingresar')}>
           Ingresar
@@ -131,9 +150,10 @@ export default function Login() {
           Crear cuenta
         </button>
       </div>
+      )}
 
       <form className="card" onSubmit={onSubmit}>
-        {GOOGLE_HABILITADO && (
+        {GOOGLE_HABILITADO && !recuperar && (
           <>
             <button type="button" className="google" onClick={conGoogle} disabled={busy}>
               <IconoGoogle /> Continuar con Google
@@ -155,6 +175,7 @@ export default function Login() {
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
         </label>
 
+        {!recuperar && (
         <div className="field">
           <label htmlFor="password">Contraseña</label>
           <div className="password">
@@ -190,6 +211,7 @@ export default function Login() {
             </ul>
           )}
         </div>
+        )}
 
         {registrarse && (
           <label className="check">
@@ -205,8 +227,19 @@ export default function Login() {
         {info && <p className="info">{info}</p>}
 
         <button className="primary" disabled={busy || (registrarse && (!passwordValida || !acepta))}>
-          {busy ? 'Un momento…' : registrarse ? 'Crear cuenta' : 'Ingresar'}
+          {busy ? 'Un momento…' : recuperar ? 'Enviar link' : registrarse ? 'Crear cuenta' : 'Ingresar'}
         </button>
+
+        {mode === 'ingresar' && (
+          <button type="button" className="link" onClick={() => cambiarModo('recuperar')}>
+            ¿Olvidaste tu contraseña?
+          </button>
+        )}
+        {recuperar && (
+          <button type="button" className="link" onClick={() => cambiarModo('ingresar')}>
+            Volver a ingresar
+          </button>
+        )}
 
         {registrarse && emailEnviado && (
           <button type="button" className="link" onClick={reenviar} disabled={busy}>
@@ -218,7 +251,7 @@ export default function Login() {
   )
 }
 
-function traducirError(err: unknown): string {
+export function traducirError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err)
   const code = (err as { code?: string })?.code ?? ''
   if (msg === 'timeout')
