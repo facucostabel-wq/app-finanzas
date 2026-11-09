@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import {
   esCuentaDisponible,
+  nombreCuenta,
   gastosPorCategoria,
   ordenarMonedas,
   totalesPorMoneda,
@@ -62,6 +63,7 @@ export default function Home() {
     { titulo: 'Para gastar', filas: porCuenta.filter((x) => esCuentaDisponible(x.cuenta.tipo)) },
     { titulo: 'Tarjetas', filas: porCuenta.filter((x) => x.cuenta.tipo === 'tarjeta') },
     { titulo: 'En brokers', filas: porCuenta.filter((x) => x.cuenta.tipo === 'broker') },
+    { titulo: 'En grupos', filas: porCuenta.filter((x) => x.cuenta.tipo === 'grupo') },
   ].filter((g) => g.filas.length > 0)
 
   // Disponible: la moneda principal grande, el resto chico debajo.
@@ -144,13 +146,15 @@ export default function Home() {
                     <ul>
                       {g.filas.map(({ cuenta, saldos }) => (
                         <li key={cuenta.id}>
-                          <span>{cuenta.nombre}</span>
+                          <span>{nombreCuenta(cuenta)}</span>
                           <span className="cuentas-montos">
                             {saldos.map((x) => (
-                              <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' ? 'negativo' : ''}>
-                                {cuenta.tipo === 'tarjeta' && x.monto < 0
+                              <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
+                                {(cuenta.tipo === 'tarjeta' || cuenta.tipo === 'grupo') && x.monto < 0
                                   ? `Debés ${formatMonto(redondear(-x.monto), x.moneda)}`
-                                  : formatMonto(redondear(x.monto), x.moneda)}
+                                  : cuenta.tipo === 'grupo'
+                                    ? `Te deben ${formatMonto(redondear(x.monto), x.moneda)}`
+                                    : formatMonto(redondear(x.monto), x.moneda)}
                               </span>
                             ))}
                             {cuenta.tipo === 'tarjeta' &&

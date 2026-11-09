@@ -4,6 +4,7 @@ import Combobox, { type Opcion } from '../components/Combobox'
 import {
   obtenerCompra,
   obtenerMovimiento,
+  nombreCuenta,
   TEXTO_TIPO_CUENTA,
   useActivos,
   tipoCategoriaDe,
@@ -143,10 +144,13 @@ export default function MovimientoForm() {
         })),
       ]
     : delaCategoria.map((a) => ({ valor: a.id, texto: a.nombre }))
-  const cuentasActivas = cuentas.filter((c) => c.activa || c.id === cuentaId || c.id === destinoId)
+  // Las cuentas de grupo las maneja la pantalla de grupos.
+  const cuentasActivas = cuentas.filter(
+    (c) => (c.activa && c.tipo !== 'grupo') || c.id === cuentaId || c.id === destinoId,
+  )
   const opcionesCuenta: Opcion[] = cuentasActivas.map((c) => ({
     valor: c.id,
-    texto: c.nombre,
+    texto: nombreCuenta(c),
     detalle: TEXTO_TIPO_CUENTA[c.tipo],
   }))
   const opcionesDestino = opcionesCuenta.filter((o) => o.valor !== cuentaId)

@@ -35,7 +35,7 @@ export default function Ajustes() {
   const { cuentas } = useCuentas()
   const [fechaSaldo, setFechaSaldo] = useState('')
   const [okFecha, setOkFecha] = useState(false)
-  const principales = cuentas.filter((c) => !c.cuenta_padre_id)
+  const principales = cuentas.filter((c) => !c.cuenta_padre_id && c.tipo !== 'grupo')
   const saldosDe = (cuentaId: string) =>
     saldos
       .filter((x) => x.cuenta_id === cuentaId && Math.abs(x.monto) >= 0.01)

@@ -40,7 +40,7 @@ export type Movimiento = {
   cantidad: number | null
 }
 
-export type TipoCuenta = 'banco' | 'billetera' | 'efectivo' | 'tarjeta' | 'broker'
+export type TipoCuenta = 'banco' | 'billetera' | 'efectivo' | 'tarjeta' | 'broker' | 'grupo'
 
 export type Cuenta = {
   id: string
@@ -50,7 +50,13 @@ export type Cuenta = {
   activa: boolean
   /** Solo tarjetas: la cuenta a la que pertenecen (ej. "Visa Galicia" → "Galicia"). */
   cuenta_padre_id: string | null
+  /** Solo cuentas de grupo (las crea la app): lo que te deben o debés en ese grupo. */
+  grupo_id: string | null
 }
+
+/** Nombre para mostrar: a las cuentas de grupo se les quita el sufijo interno. */
+export const nombreCuenta = (c: Pick<Cuenta, 'nombre' | 'tipo'>) =>
+  c.tipo === 'grupo' ? c.nombre.replace(/ [0-9a-f]{4}$/, '') : c.nombre
 
 export const TIPOS_CUENTA: { valor: TipoCuenta; texto: string }[] = [
   { valor: 'banco', texto: 'Banco' },
@@ -60,10 +66,10 @@ export const TIPOS_CUENTA: { valor: TipoCuenta; texto: string }[] = [
   { valor: 'broker', texto: 'Broker / exchange' },
 ]
 
-export const TEXTO_TIPO_CUENTA = Object.fromEntries(TIPOS_CUENTA.map((t) => [t.valor, t.texto])) as Record<
-  TipoCuenta,
-  string
->
+export const TEXTO_TIPO_CUENTA = {
+  ...Object.fromEntries(TIPOS_CUENTA.map((t) => [t.valor, t.texto])),
+  grupo: 'Grupo',
+} as Record<TipoCuenta, string>
 
 /** Cuentas cuyo saldo es "disponible para gastar" (no tarjetas ni brokers). */
 export const esCuentaDisponible = (tipo: TipoCuenta) => tipo === 'banco' || tipo === 'billetera' || tipo === 'efectivo'
@@ -72,7 +78,7 @@ export function useCuentas() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([])
   const [loading, setLoading] = useState(true)
   const recargar = useCallback(async () => {
-    const { data } = await supabase.from('cuentas').select('id, nombre, tipo, orden, activa, cuenta_padre_id').order('orden').order('nombre')
+    const { data } = await supabase.from('cuentas').select('id, nombre, tipo, orden, activa, cuenta_padre_id, grupo_id').order('orden').order('nombre')
     setCuentas((data ?? []) as Cuenta[])
     setLoading(false)
   }, [])

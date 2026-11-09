@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
-import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useActivos, useCategorias, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
+import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
 import { supabase } from '../lib/supabase'
 import { formatCantidad, formatMonto, formatPrecio, nombreDia } from '../lib/format'
 import { SelectorMes, useMes } from '../lib/mes'
@@ -65,8 +65,8 @@ export default function Movimientos() {
                       </div>
                       <div className="muted chico">
                         {m.tipo === 'transferencia'
-                          ? `${cuenta.get(m.cuenta_id)?.nombre ?? '—'} → ${cuenta.get(m.cuenta_destino_id ?? '')?.nombre ?? '—'}`
-                          : (cuenta.get(m.cuenta_id)?.nombre ??
+                          ? `${cuenta.get(m.cuenta_id) ? nombreCuenta(cuenta.get(m.cuenta_id)!) : '—'} → ${cuenta.get(m.cuenta_destino_id ?? '') ? nombreCuenta(cuenta.get(m.cuenta_destino_id!)!) : '—'}`
+                          : ((cuenta.get(m.cuenta_id) && nombreCuenta(cuenta.get(m.cuenta_id)!)) ??
                             (m.forma_pago ? TEXTO_FORMA_PAGO[m.forma_pago] : TEXTO_TIPO[m.tipo]))}
                         {m.cuota_n && m.compra_id
                           ? `, cuota ${m.cuota_n}${totalCuotas.get(m.compra_id) ? ` de ${totalCuotas.get(m.compra_id)}` : ''}`

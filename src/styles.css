@@ -152,14 +152,14 @@ button.google {
 
 .bottomnav {
   position: fixed; left: 0; right: 0; bottom: 0;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface); border-top: 1px solid var(--border);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   z-index: 10;
 }
 .bottomnav a {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  color: var(--muted); text-decoration: none; font-size: 0.75rem; padding: 6px 0;
+  color: var(--muted); text-decoration: none; font-size: 0.7rem; padding: 6px 0;
 }
 .bottomnav a.active { color: var(--accent); font-weight: 600; }
 .fab {
@@ -364,3 +364,17 @@ select {
 .tarjeta-fila input { flex: 1; min-width: 0; }
 
 .chip-input { width: 78px; border-radius: 999px; padding: 8px 12px; text-align: center; font-size: 0.92rem; }
+
+/* ---------- Grupos ---------- */
+.boton-ancho { display: block; width: 100%; text-align: center; margin-top: 14px; }
+button.primary.boton-ancho { padding: 14px; }
+.chico-boton { padding: 6px 12px; font-size: 0.85rem; }
+.bloque h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.pendientes .pendiente { border-top: 1px solid var(--border); padding: 12px 0; display: grid; gap: 10px; }
+.pendiente p { margin: 0; }
+.division { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.division li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.division-input { width: 40%; text-align: right; padding: 8px 10px; }
+.sin-borde { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; min-inline-size: 0; width: 100%; grid-template-columns: minmax(0, 1fr); }
+.mi-parte { border-top: 1px solid var(--border); padding-top: 12px; }
+input[type='checkbox'] { accent-color: var(--accent); }
