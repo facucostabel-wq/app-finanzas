@@ -362,3 +362,5 @@ select {
 .saldo-moneda input { width: 55%; text-align: right; font-variant-numeric: tabular-nums; }
 .tarjeta-fila { display: flex; gap: 8px; align-items: center; }
 .tarjeta-fila input { flex: 1; min-width: 0; }
+
+.chip-input { width: 78px; border-radius: 999px; padding: 8px 12px; text-align: center; font-size: 0.92rem; }

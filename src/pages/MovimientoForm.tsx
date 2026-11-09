@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Combobox, { type Opcion } from '../components/Combobox'
 import {
+  obtenerCompra,
   obtenerMovimiento,
   TEXTO_TIPO_CUENTA,
   useActivos,
@@ -10,7 +11,7 @@ import {
   useCuentas,
   type TipoMovimiento,
 } from '../lib/datos'
-import { formatPrecio, hoyISO, montoAEditable, parseCantidad, parseMonto } from '../lib/format'
+import { formatMonto, formatPrecio, hoyISO, montoAEditable, nombreMes, parseCantidad, parseMonto } from '../lib/format'
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
@@ -51,6 +52,10 @@ export default function MovimientoForm() {
   const [categoriaId, setCategoriaId] = useState<string | null>(null)
   const [cuentaId, setCuentaId] = useState<string | null>(null)
   const [destinoId, setDestinoId] = useState<string | null>(null)
+  // Cuotas (solo gastos con tarjeta). Si se edita una cuota, se edita la compra entera.
+  const [cuotas, setCuotas] = useState(1)
+  const [compraId, setCompraId] = useState<string | null>(null)
+  const [cuotaN, setCuotaN] = useState<number | null>(null)
   const [activoId, setActivoId] = useState<string | null>(null)
   const [cantidadTexto, setCantidadTexto] = useState('')
   const [fecha, setFecha] = useState(hoyISO())
@@ -62,7 +67,25 @@ export default function MovimientoForm() {
   // Al editar, traer el movimiento.
   useEffect(() => {
     if (!id) return
-    obtenerMovimiento(id).then((m) => {
+    obtenerMovimiento(id).then(async (m) => {
+      if (m?.compra_id) {
+        // Es una cuota: se carga la compra completa.
+        const c = await obtenerCompra(m.compra_id)
+        if (c) {
+          setTipo('gasto')
+          setMontoTexto(montoAEditable(c.monto_total))
+          setMoneda(c.moneda)
+          setCategoriaId(c.categoria_id)
+          setCuentaId(c.cuenta_id)
+          setFecha(c.fecha)
+          setNota(c.nota ?? '')
+          setCuotas(c.cuotas)
+          setCompraId(c.id)
+          setCuotaN(m.cuota_n)
+          setCargando(false)
+          return
+        }
+      }
       if (!m) {
         setError('No se encontró el movimiento.')
       } else {
@@ -128,6 +151,15 @@ export default function MovimientoForm() {
   }))
   const opcionesDestino = opcionesCuenta.filter((o) => o.valor !== cuentaId)
   const destinoEsTarjeta = cuentas.find((c) => c.id === destinoId)?.tipo === 'tarjeta'
+  const conTarjeta = tipoMovimiento === 'gasto' && cuentas.find((c) => c.id === cuentaId)?.tipo === 'tarjeta'
+  const enCuotas = conTarjeta && cuotas > 1
+  const valorCuota = enCuotas && monto ? Math.round((monto / cuotas) * 100) / 100 : null
+  const ultimaCuota = (() => {
+    if (!enCuotas) return null
+    const [y, m] = fecha.split('-').map(Number)
+    const d = new Date(y, m - 1 + cuotas - 1, 1)
+    return nombreMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`).toLowerCase()
+  })()
   const etiquetaCuenta = esTransferencia
     ? 'Desde'
     : tipoMovimiento === 'gasto'
@@ -237,16 +269,59 @@ export default function MovimientoForm() {
       nota: nota.trim() || null,
     }
     setBusy(true)
-    const { error } = editando
-      ? await supabase.from('movimientos').update(datos).eq('id', id!)
-      : await supabase.from('movimientos').insert(datos)
+    const error = await guardarEnBase(datos)
     setBusy(false)
-    if (error) return setError(`No se pudo guardar: ${error.message}`)
+    if (error) return setError(`No se pudo guardar: ${error}`)
     guardarUltimaCuenta(tipoMovimiento, cuentaId)
     navigate(-1)
   }
 
+  /**
+   * Guarda según el caso: compra en cuotas (la base genera las cuotas) o movimiento
+   * común. Si cambia de uno a otro al editar, reemplaza el registro anterior.
+   */
+  async function guardarEnBase(datos: Record<string, unknown>): Promise<string | null> {
+    if (enCuotas) {
+      const compra = {
+        fecha,
+        monto_total: monto,
+        moneda,
+        cuotas,
+        cuenta_id: cuentaId,
+        categoria_id: categoriaId,
+        nota: nota.trim() || null,
+      }
+      if (compraId) {
+        const { error } = await supabase.from('compras_cuotas').update(compra).eq('id', compraId)
+        return error?.message ?? null
+      }
+      const { error } = await supabase.from('compras_cuotas').insert(compra)
+      if (error) return error.message
+      if (editando) await supabase.from('movimientos').delete().eq('id', id!) // era un gasto en un pago
+      return null
+    }
+    if (compraId) {
+      // Pasó de cuotas a un solo pago: se borra la compra y queda un gasto común.
+      const { error } = await supabase.from('movimientos').insert(datos)
+      if (error) return error.message
+      await supabase.from('compras_cuotas').delete().eq('id', compraId)
+      return null
+    }
+    const { error } = editando
+      ? await supabase.from('movimientos').update(datos).eq('id', id!)
+      : await supabase.from('movimientos').insert(datos)
+    return error?.message ?? null
+  }
+
   async function borrar() {
+    if (compraId) {
+      if (!window.confirm(`¿Borrar la compra completa y sus ${cuotas} cuotas? No se puede deshacer.`)) return
+      setBusy(true)
+      const { error } = await supabase.from('compras_cuotas').delete().eq('id', compraId)
+      setBusy(false)
+      if (error) return setError(`No se pudo borrar: ${error.message}`)
+      return navigate(-1)
+    }
     if (!id || !window.confirm('¿Borrar este movimiento? No se puede deshacer.')) return
     setBusy(true)
     const { error } = await supabase.from('movimientos').delete().eq('id', id)
@@ -263,11 +338,16 @@ export default function MovimientoForm() {
         <button className="link" onClick={() => navigate(-1)}>
           ← Volver
         </button>
-        <h1 className="titulo-chico">{editando ? 'Editar movimiento' : 'Nuevo movimiento'}</h1>
+        <h1 className="titulo-chico">{compraId ? 'Editar compra en cuotas' : editando ? 'Editar movimiento' : 'Nuevo movimiento'}</h1>
         <span style={{ width: 64 }} />
       </header>
 
       <form className="card formulario" onSubmit={guardar}>
+        {compraId && cuotaN && (
+          <p className="aviso">
+            Esta es la cuota {cuotaN} de {cuotas}. Los cambios se aplican a toda la compra.
+          </p>
+        )}
         <div className="segmentado" role="group" aria-label="Tipo de movimiento">
           {(
             [
@@ -295,7 +375,7 @@ export default function MovimientoForm() {
         )}
 
         <label>
-          Monto
+          {enCuotas ? 'Monto total' : 'Monto'}
           <input
             className="monto-input"
             inputMode="decimal"
@@ -413,6 +493,42 @@ export default function MovimientoForm() {
           />
         )}
 
+        {conTarjeta && (
+          <div className="grupo">
+            <span className="grupo-titulo">Cuotas</span>
+            <div className="chips">
+              {[1, 3, 6, 9, 12, 18].map((n) => (
+                <button
+                  type="button"
+                  key={n}
+                  className="chip"
+                  aria-pressed={cuotas === n}
+                  onClick={() => setCuotas(n)}
+                >
+                  {n === 1 ? 'En un pago' : n}
+                </button>
+              ))}
+              <input
+                className="chip-input"
+                inputMode="numeric"
+                placeholder="Otra"
+                aria-label="Otra cantidad de cuotas"
+                value={[1, 3, 6, 9, 12, 18].includes(cuotas) ? '' : String(cuotas)}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10)
+                  setCuotas(Number.isFinite(n) && n >= 1 && n <= 60 ? n : 1)
+                }}
+              />
+            </div>
+            {enCuotas && (
+              <span className="cotizacion">
+                {cuotas} cuotas de <strong>{valorCuota ? formatMonto(valorCuota, moneda) : '—'}</strong>
+                {ultimaCuota && `, la última en ${ultimaCuota}`}
+              </span>
+            )}
+          </div>
+        )}
+
         <label>
           Fecha
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
@@ -430,7 +546,7 @@ export default function MovimientoForm() {
         </button>
         {editando && (
           <button type="button" className="peligro" onClick={borrar} disabled={busy}>
-            Borrar movimiento
+            {compraId ? 'Borrar compra completa' : 'Borrar movimiento'}
           </button>
         )}
       </form>

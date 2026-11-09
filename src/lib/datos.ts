@@ -30,6 +30,9 @@ export type Movimiento = {
   cuenta_id: string
   /** Solo transferencias: cuenta que recibe. */
   cuenta_destino_id: string | null
+  /** Si es una cuota: la compra en cuotas a la que pertenece y su número. */
+  compra_id: string | null
+  cuota_n: number | null
   nota: string | null
   /** Subcategoría de inversión (BTC, AAPL…). Solo inversiones. */
   activo_id: string | null
@@ -90,7 +93,7 @@ export type Activo = {
 }
 
 const CAMPOS_MOV =
-  'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad, cuenta_id, cuenta_destino_id'
+  'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad, cuenta_id, cuenta_destino_id, compra_id, cuota_n'
 
 // numeric llega como string desde la API: lo pasamos a número.
 function normalizar(m: Record<string, unknown>): Movimiento {
@@ -342,4 +345,48 @@ export function useSaldosCuentas(mes: Mes) {
     })
   }, [mes])
   return { saldos, error }
+}
+
+/** Compra en cuotas con tarjeta: se carga una vez y la base genera un gasto por mes. */
+export type CompraCuotas = {
+  id: string
+  fecha: string
+  monto_total: number
+  moneda: Moneda
+  cuotas: number
+  cuenta_id: string
+  categoria_id: string
+  nota: string | null
+}
+
+export async function obtenerCompra(id: string): Promise<CompraCuotas | null> {
+  const { data } = await supabase
+    .from('compras_cuotas')
+    .select('id, fecha, monto_total, moneda, cuotas, cuenta_id, categoria_id, nota')
+    .eq('id', id)
+    .maybeSingle()
+  return data ? ({ ...data, monto_total: Number(data.monto_total) } as CompraCuotas) : null
+}
+
+/** Cuotas que todavía no vencieron (fecha desde `desde`), sumadas por tarjeta y moneda. */
+export function useCuotasFuturas(desde: string) {
+  const [futuras, setFuturas] = useState<{ cuenta_id: string; moneda: Moneda; monto: number }[]>([])
+  useEffect(() => {
+    supabase
+      .from('movimientos')
+      .select('cuenta_id, moneda, monto')
+      .not('compra_id', 'is', null)
+      .gte('fecha', desde)
+      .then(({ data }) => {
+        const acc = new Map<string, { cuenta_id: string; moneda: Moneda; monto: number }>()
+        for (const r of data ?? []) {
+          const k = `${r.cuenta_id}|${r.moneda}`
+          const x = acc.get(k) ?? { cuenta_id: r.cuenta_id as string, moneda: r.moneda as string, monto: 0 }
+          x.monto += Number(r.monto)
+          acc.set(k, x)
+        }
+        setFuturas([...acc.values()])
+      })
+  }, [desde])
+  return futuras
 }

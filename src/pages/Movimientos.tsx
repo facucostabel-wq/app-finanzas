@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useActivos, useCategorias, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
+import { supabase } from '../lib/supabase'
 import { formatCantidad, formatMonto, formatPrecio, nombreDia } from '../lib/format'
 import { SelectorMes, useMes } from '../lib/mes'
 
@@ -14,6 +16,14 @@ export default function Movimientos() {
   const { activos } = useActivos()
   const { cuentas } = useCuentas()
   const cuenta = new Map(cuentas.map((c) => [c.id, c]))
+  // Total de cuotas de cada compra, para mostrar "cuota 2 de 6".
+  const [totalCuotas, setTotalCuotas] = useState<Map<string, number>>(new Map())
+  useEffect(() => {
+    supabase
+      .from('compras_cuotas')
+      .select('id, cuotas')
+      .then(({ data }) => setTotalCuotas(new Map((data ?? []).map((c) => [c.id as string, c.cuotas as number]))))
+  }, [])
   const nombresActivo = new Map(activos.map((a) => [a.id, a.nombre]))
 
   // Agrupa por día (ya vienen ordenados del más reciente al más viejo).
@@ -58,6 +68,9 @@ export default function Movimientos() {
                           ? `${cuenta.get(m.cuenta_id)?.nombre ?? '—'} → ${cuenta.get(m.cuenta_destino_id ?? '')?.nombre ?? '—'}`
                           : (cuenta.get(m.cuenta_id)?.nombre ??
                             (m.forma_pago ? TEXTO_FORMA_PAGO[m.forma_pago] : TEXTO_TIPO[m.tipo]))}
+                        {m.cuota_n && m.compra_id
+                          ? `, cuota ${m.cuota_n}${totalCuotas.get(m.compra_id) ? ` de ${totalCuotas.get(m.compra_id)}` : ''}`
+                          : ''}
                         {m.cantidad
                           ? ` · ${formatCantidad(m.cantidad)} a ${formatPrecio(m.monto / m.cantidad, m.moneda)}`
                           : ''}

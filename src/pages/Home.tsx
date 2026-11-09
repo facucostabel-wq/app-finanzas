@@ -9,11 +9,12 @@ import {
   useActivos,
   useCategorias,
   useCuentas,
+  useCuotasFuturas,
   useMovimientosDelMes,
   useSaldosCuentas,
   useSaldosIniciales,
 } from '../lib/datos'
-import { formatMonto, mesActual, moverMes, nombreMes, type Moneda } from '../lib/format'
+import { formatMonto, mesActual, moverMes, nombreMes, rangoMes, type Moneda } from '../lib/format'
 import { useMes } from '../lib/mes'
 import { usePerfil } from '../lib/perfil'
 
@@ -29,6 +30,7 @@ export default function Home() {
   const { saldos: saldosCuentas, error: errorDisponible } = useSaldosCuentas(mes)
   const { saldos, loading: cargandoSaldos } = useSaldosIniciales()
   const [verCuentas, setVerCuentas] = useState(false)
+  const cuotasFuturas = useCuotasFuturas(rangoMes(mes).hasta)
   const [monedaElegida, setMonedaElegida] = useState<Moneda | null>(null)
   const [verCalculo, setVerCalculo] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
@@ -46,6 +48,7 @@ export default function Home() {
     if (tipo && esCuentaDisponible(tipo)) disponible.set(s.moneda, (disponible.get(s.moneda) ?? 0) + s.monto)
   }
   // Saldos por cuenta (para el detalle), solo los que no son cero.
+  const futurasDe = (cuentaId: string) => cuotasFuturas.filter((f) => f.cuenta_id === cuentaId)
   const porCuenta = cuentas
     .map((c) => ({
       cuenta: c,
@@ -54,7 +57,7 @@ export default function Home() {
         favoritas,
       ).map((m) => ({ moneda: m, monto: saldosCuentas.find((s) => s.cuenta_id === c.id && s.moneda === m)!.monto })),
     }))
-    .filter((x) => x.saldos.length > 0)
+    .filter((x) => x.saldos.length > 0 || futurasDe(x.cuenta.id).length > 0)
   const grupos: { titulo: string; filas: typeof porCuenta }[] = [
     { titulo: 'Para gastar', filas: porCuenta.filter((x) => esCuentaDisponible(x.cuenta.tipo)) },
     { titulo: 'Tarjetas', filas: porCuenta.filter((x) => x.cuenta.tipo === 'tarjeta') },
@@ -150,6 +153,12 @@ export default function Home() {
                                   : formatMonto(redondear(x.monto), x.moneda)}
                               </span>
                             ))}
+                            {cuenta.tipo === 'tarjeta' &&
+                              futurasDe(cuenta.id).map((f) => (
+                                <span key={`f-${f.moneda}`} className="muted chico">
+                                  y {formatMonto(redondear(f.monto), f.moneda)} en cuotas a vencer
+                                </span>
+                              ))}
                           </span>
                         </li>
                       ))}
