@@ -146,7 +146,12 @@ export default function Home() {
                     <ul>
                       {g.filas.map(({ cuenta, saldos }) => (
                         <li key={cuenta.id}>
-                          <span>{nombreCuenta(cuenta)}</span>
+                          <Link
+                            to={cuenta.tipo === 'grupo' && cuenta.grupo_id ? `/grupos/${cuenta.grupo_id}` : `/movimientos?cuenta=${cuenta.id}`}
+                            className="cuenta-link"
+                          >
+                            {nombreCuenta(cuenta)} <span aria-hidden="true">›</span>
+                          </Link>
                           <span className="cuentas-montos">
                             {saldos.map((x) => (
                               <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
@@ -271,13 +276,17 @@ export default function Home() {
               <ul className="categorias">
                 {visibles.map((c) => (
                   <li key={c.id}>
-                    <div className="categoria-fila">
-                      <span>{c.nombre}</span>
-                      <span className="categoria-monto">{formatMonto(c.total, moneda)}</span>
-                    </div>
-                    <div className="categoria-pista" aria-hidden="true">
-                      <div className="categoria-barra" style={{ width: `${maximo ? (c.total / maximo) * 100 : 0}%` }} />
-                    </div>
+                    <Link to={`/movimientos?categoria=${c.id}`} className="categoria-link" aria-label={`Ver los gastos de ${c.nombre}`}>
+                      <div className="categoria-fila">
+                        <span>
+                          {c.nombre} <span className="categoria-flecha" aria-hidden="true">›</span>
+                        </span>
+                        <span className="categoria-monto">{formatMonto(c.total, moneda)}</span>
+                      </div>
+                      <div className="categoria-pista" aria-hidden="true">
+                        <div className="categoria-barra" style={{ width: `${maximo ? (c.total / maximo) * 100 : 0}%` }} />
+                      </div>
+                    </Link>
                   </li>
                 ))}
               </ul>

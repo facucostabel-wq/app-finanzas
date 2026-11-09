@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
-import { TEXTO_FORMA_PAGO, TEXTO_TIPO, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
+import Combobox, { type Opcion } from '../components/Combobox'
+import { TEXTO_FORMA_PAGO, TEXTO_TIPO, TEXTO_TIPO_CUENTA, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
 import { supabase } from '../lib/supabase'
-import { formatCantidad, formatMonto, formatPrecio, nombreDia } from '../lib/format'
+import { formatCantidad, formatMonto, formatPrecio, nombreDia, nombreMes } from '../lib/format'
 import { SelectorMes, useMes } from '../lib/mes'
 
 const SIGNO: Record<Movimiento['tipo'], string> = { gasto: '−', ingreso: '+', aporte: '→', rescate: '←', transferencia: '⇄' }
@@ -26,9 +27,53 @@ export default function Movimientos() {
   }, [])
   const nombresActivo = new Map(activos.map((a) => [a.id, a.nombre]))
 
+  // Filtros por categoría y por cuenta (vienen en la URL, así se puede llegar desde el resumen).
+  const [params, setParams] = useSearchParams()
+  const filtroCategoria = params.get('categoria') ?? ''
+  const filtroCuenta = params.get('cuenta') ?? ''
+  const hayFiltro = Boolean(filtroCategoria || filtroCuenta)
+  const [verFiltros, setVerFiltros] = useState(hayFiltro)
+  function cambiarFiltro(clave: 'categoria' | 'cuenta', valor: string) {
+    const nuevos = new URLSearchParams(params)
+    if (valor) nuevos.set(clave, valor)
+    else nuevos.delete(clave)
+    setParams(nuevos, { replace: true })
+  }
+
+  const opcionesCategoria: Opcion[] = [
+    { valor: '', texto: 'Todas' },
+    ...categorias.map((c) => ({
+      valor: c.id,
+      texto: c.nombre,
+      grupo: c.tipo === 'gasto' ? 'Gastos' : c.tipo === 'ingreso' ? 'Ingresos' : 'Inversiones',
+    })),
+  ]
+  const opcionesCuenta: Opcion[] = [
+    { valor: '', texto: 'Todas' },
+    ...cuentas.map((c) => ({ valor: c.id, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo] })),
+  ]
+
+  const filtrados = movimientos.filter(
+    (m) =>
+      (!filtroCategoria || m.categoria_id === filtroCategoria) &&
+      (!filtroCuenta || m.cuenta_id === filtroCuenta || m.cuenta_destino_id === filtroCuenta),
+  )
+
+  // Totales de lo filtrado, por moneda: lo que entró y lo que salió.
+  const totales = new Map<string, { entra: number; sale: number }>()
+  for (const m of filtrados) {
+    const t = totales.get(m.moneda) ?? { entra: 0, sale: 0 }
+    const entra =
+      m.tipo === 'ingreso' || m.tipo === 'rescate' || (m.tipo === 'transferencia' && filtroCuenta && m.cuenta_destino_id === filtroCuenta)
+    if (m.tipo === 'transferencia' && !filtroCuenta) continue
+    if (entra) t.entra += m.monto
+    else t.sale += m.monto
+    totales.set(m.moneda, t)
+  }
+
   // Agrupa por día (ya vienen ordenados del más reciente al más viejo).
   const dias: { fecha: string; items: Movimiento[] }[] = []
-  for (const m of movimientos) {
+  for (const m of filtrados) {
     const ultimo = dias[dias.length - 1]
     if (ultimo?.fecha === m.fecha) ultimo.items.push(m)
     else dias.push({ fecha: m.fecha, items: [m] })
@@ -38,14 +83,48 @@ export default function Movimientos() {
     <main className="screen con-nav">
       <header className="topbar">
         <h1>Movimientos</h1>
+        <button
+          type="button"
+          className={`link-discreto ${hayFiltro ? 'filtro-activo' : ''}`}
+          onClick={() => setVerFiltros((v) => !v)}
+          aria-expanded={verFiltros}
+        >
+          {hayFiltro ? 'Filtrado' : 'Filtrar'}
+        </button>
       </header>
       <SelectorMes />
+
+      {verFiltros && (
+        <section className="card filtros">
+          <Combobox etiqueta="Categoría" opciones={opcionesCategoria} valor={filtroCategoria} onCambio={(v) => cambiarFiltro('categoria', v)} />
+          <Combobox etiqueta="Cuenta" opciones={opcionesCuenta} valor={filtroCuenta} onCambio={(v) => cambiarFiltro('cuenta', v)} />
+          {hayFiltro && (
+            <button type="button" className="link" onClick={() => setParams({}, { replace: true })}>
+              Quitar filtros
+            </button>
+          )}
+        </section>
+      )}
+
+      {hayFiltro && !loading && (
+        <section className="filtro-resumen" aria-live="polite">
+          <p className="muted chico">
+            {filtrados.length === 1 ? '1 movimiento' : `${filtrados.length} movimientos`} en {nombreMes(mes).toLowerCase()}
+          </p>
+          {[...totales.entries()].map(([moneda, t]) => (
+            <p key={moneda} className="filtro-totales">
+              {t.sale > 0 && <span className="monto gasto">− {formatMonto(t.sale, moneda)}</span>}
+              {t.entra > 0 && <span className="monto ingreso">+ {formatMonto(t.entra, moneda)}</span>}
+            </p>
+          ))}
+        </section>
+      )}
 
       {error && <p className="error">No se pudieron cargar los movimientos: {error}</p>}
       {loading ? (
         <p className="muted">Cargando…</p>
       ) : dias.length === 0 ? (
-        <p className="muted">No hay movimientos en este mes.</p>
+        <p className="muted">{hayFiltro ? 'No hay movimientos con ese filtro en este mes.' : 'No hay movimientos en este mes.'}</p>
       ) : (
         dias.map((d) => (
           <section key={d.fecha} className="dia">
