@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import Tutorial from './components/Tutorial'
 import { useAuth } from './lib/auth'
 import { usePerfil } from './lib/perfil'
 import { missingVars, supabaseMissingConfig } from './lib/supabase'
@@ -65,7 +66,11 @@ export default function App() {
   const protegida = (pagina: React.ReactNode) =>
     !session ? <Navigate to="/ingresar" replace /> : faltaConsentimiento ? <Consentimiento /> : pagina
 
+  const verTutorial = session && !faltaConsentimiento && !location.pathname.startsWith('/unirse/') && location.pathname !== '/privacidad'
+
   return (
+    <>
+    {verTutorial && <Tutorial key={session.user.id} uid={session.user.id} />}
     <Routes>
       <Route path="/privacidad" element={<Privacidad />} />
       <Route path="/ingresar" element={session ? <Navigate to="/" replace /> : <Login />} />
@@ -83,5 +88,6 @@ export default function App() {
       <Route path="/cuentas/:id" element={protegida(<CuentaForm />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
+import { abrirTutorial } from '../components/Tutorial'
 import { useAuth } from '../lib/auth'
 import {
   TEXTO_TIPO_CUENTA,
@@ -252,6 +253,9 @@ export default function Ajustes() {
         <h2>Cuenta</h2>
         <p className="muted">{session?.user.email}</p>
         <Link to="/privacidad">Política de privacidad</Link>
+        <button className="secundario" onClick={abrirTutorial}>
+          Ver el tutorial
+        </button>
         <button className="secundario" onClick={() => supabase.auth.signOut()}>
           Cerrar sesión
         </button>

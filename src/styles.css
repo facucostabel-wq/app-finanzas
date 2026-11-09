@@ -378,3 +378,61 @@ button.primary.boton-ancho { padding: 14px; }
 .sin-borde { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; min-inline-size: 0; width: 100%; grid-template-columns: minmax(0, 1fr); }
 .mi-parte { border-top: 1px solid var(--border); padding-top: 12px; }
 input[type='checkbox'] { accent-color: var(--accent); }
+
+/* Tutorial de bienvenida */
+.tutorial-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(10 14 18 / 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+@media (min-width: 560px) { .tutorial-fondo { align-items: center; } }
+.tutorial {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 26px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.25);
+  animation: tutorial-entra 0.22s ease-out;
+}
+@keyframes tutorial-entra { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tutorial { animation: none; } }
+.tutorial-saltar { position: absolute; top: 10px; right: 10px; font-size: 0.9rem; color: var(--muted); }
+.tutorial-icono {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: var(--accent-suave);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+.tutorial h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.01em; }
+.tutorial-texto { color: var(--muted); line-height: 1.5; min-height: 9.5em; }
+.tutorial-texto p { margin: 0 0 10px; }
+.tutorial-texto b { color: var(--text); font-weight: 600; }
+.tutorial-puntos { display: flex; justify-content: center; gap: 8px; }
+.tutorial-puntos button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--border);
+  transition: width 0.2s, background 0.2s;
+}
+.tutorial-puntos button.activo { width: 22px; background: var(--accent); }
+.tutorial-nav { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.tutorial-nav button:disabled { opacity: 0.4; }
+.tutorial-check { flex-direction: row; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; color: var(--muted); }
+.tutorial-check input { width: 18px; height: 18px; accent-color: var(--accent); }
