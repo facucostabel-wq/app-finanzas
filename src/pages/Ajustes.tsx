@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
 import MiCuenta from '../components/MiCuenta'
+import IconoCategoria from '../components/IconoCategoria'
+import SelectorIcono from '../components/SelectorIcono'
 import AvisoPush from '../components/AvisoPush'
 import { desactivarPush } from '../lib/push'
 import { useAuth } from '../lib/auth'
@@ -32,6 +34,7 @@ export default function Ajustes() {
   const { categorias, recargar } = useCategorias()
   const [tipo, setTipo] = useState<TipoCategoria>('gasto')
   const [nueva, setNueva] = useState('')
+  const [eligiendo, setEligiendo] = useState<Categoria | null>(null)
   const [error, setError] = useState<string | null>(null)
   const favoritas = perfil?.monedas_favoritas ?? []
   // Saldo actual de cada cuenta (no el inicial).
@@ -270,7 +273,10 @@ export default function Ajustes() {
         <ul className="lista">
           {delTipo.map((c) => (
             <li key={c.id} className={`fila ${c.activa ? '' : 'inactiva'}`}>
-              <button className="link-texto" onClick={() => renombrar(c)} aria-label={`Renombrar ${c.nombre}`}>
+              <button className="boton-icono-cat" onClick={() => setEligiendo(c)} aria-label={`Cambiar el ícono de ${c.nombre}`}>
+                <IconoCategoria nombre={c.nombre} tipo={c.tipo} icono={c.icono} />
+              </button>
+              <button className="link-texto nombre-cat" onClick={() => renombrar(c)} aria-label={`Renombrar ${c.nombre}`}>
                 {c.nombre}
               </button>
               <label className="interruptor">
@@ -297,7 +303,19 @@ export default function Ajustes() {
             Agregar
           </button>
         </div>
-        <p className="muted chico">Tocá un nombre para renombrarlo. Ocultar una categoría no borra sus movimientos.</p>
+        <p className="muted chico">
+          Tocá el ícono para cambiarlo y el nombre para renombrarla. Ocultar una categoría no borra sus movimientos.
+        </p>
+        {eligiendo && (
+          <SelectorIcono
+            categoria={eligiendo}
+            onElegir={(icono) => {
+              actualizar(eligiendo, { icono })
+              setEligiendo(null)
+            }}
+            onCerrar={() => setEligiendo(null)}
+          />
+        )}
       </section>
         </>
       )}

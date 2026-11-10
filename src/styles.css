@@ -13,12 +13,38 @@
   --error: #ff7a6b;
   --info: #6cc4f0;
   --radius: 18px;
-  color-scheme: dark;
+  --boton-1: #19e0b4;
+  --boton-2: #00d4a6;
+  --nav: #0d1117;
+  --placeholder: #5f6b78;
+  color-scheme: light dark;
   font-family: 'Plus Jakarta Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Versión clara del mismo diseño, cuando el celular está en modo claro. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f2f5f7;
+    --surface: #ffffff;
+    --surface-2: #eef2f5;
+    --text: #0f1419;
+    --muted: #5b6875;
+    --border: #e0e5ea;
+    --accent: #007f66;
+    --accent-2: #00796b;
+    --accent-suave: rgb(0 168 135 / 0.11);
+    --accent-text: #04201a;
+    --error: #c2412d;
+    --info: #0f5f8a;
+    --boton-1: #1ad9ad;
+    --boton-2: #00c49a;
+    --nav: #ffffff;
+    --placeholder: #98a3ae;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -486,9 +512,9 @@ button.peligro:disabled { opacity: 0.45; }
 /* ---------- Rediseño oscuro ---------- */
 .card { border-color: var(--border); box-shadow: 0 1px 0 rgb(255 255 255 / 0.02) inset; }
 input, .combo-campo input { background: var(--surface-2); border-color: var(--border); border-radius: 12px; }
-input::placeholder { color: #5f6b78; }
+input::placeholder { color: var(--placeholder); }
 button.primary, a.primary {
-  background: linear-gradient(180deg, #19e0b4, var(--accent));
+  background: linear-gradient(180deg, var(--boton-1), var(--boton-2));
   color: var(--accent-text); border-radius: 14px; font-weight: 700;
   box-shadow: 0 6px 20px rgb(0 212 166 / 0.18);
 }
@@ -502,14 +528,14 @@ button.secundario { background: var(--surface-2); }
 .hoja-fondo, .tutorial-fondo { background: rgb(0 0 0 / 0.6); }
 
 /* Barra de abajo con indicador del activo */
-.bottomnav { background: rgb(15 19 25 / 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top-color: var(--border); }
+.bottomnav { border-top-color: var(--border); }
 .bottomnav a { position: relative; padding-top: 10px; }
 .bottomnav a.active::before {
   content: ''; position: absolute; top: -6px; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px;
   background: var(--accent); box-shadow: 0 0 12px rgb(0 212 166 / 0.6);
 }
 .fab {
-  background: linear-gradient(180deg, #19e0b4, var(--accent)); color: var(--accent-text);
+  background: linear-gradient(180deg, var(--boton-1), var(--boton-2)); color: var(--accent-text);
   box-shadow: 0 8px 26px rgb(0 212 166 / 0.35);
 }
 
@@ -547,7 +573,19 @@ button.secundario { background: var(--surface-2); }
 .icono-cat.ingreso { background: var(--accent-suave); border-color: transparent; }
 .icono-cat.neutro { color: var(--muted); }
 .monto.gasto { color: var(--text); }
-.bottomnav { background: #0d1117; }
+.bottomnav { background: var(--nav); }
 .categoria-link.con-icono { display: flex; align-items: center; gap: 12px; }
 .categoria-link.con-icono .icono-cat { width: 38px; height: 38px; border-radius: 12px; }
 .categoria-cuerpo { flex: 1; min-width: 0; }
+
+/* Elegir ícono de categoría */
+.boton-icono-cat { background: none; border: 0; padding: 0; flex: none; border-radius: 14px; }
+.nombre-cat { flex: 1; min-width: 0; }
+.grilla-iconos {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; overflow-y: auto; padding: 2px 2px 8px;
+}
+.opcion-icono {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 2px;
+  background: none; border: 1px solid transparent; border-radius: 14px; color: var(--muted); font-size: 0.72rem;
+}
+.opcion-icono.elegido { border-color: var(--accent); background: var(--accent-suave); color: var(--text); }

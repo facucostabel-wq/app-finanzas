@@ -278,7 +278,7 @@ export default function Home() {
                 {visibles.map((c) => (
                   <li key={c.id}>
                     <Link to={`/movimientos?categoria=${c.id}`} className="categoria-link con-icono" aria-label={`Ver los gastos de ${c.nombre}`}>
-                      <IconoCategoria nombre={c.nombre} tipo="gasto" />
+                      <IconoCategoria nombre={c.nombre} tipo="gasto" icono={c.icono} />
                       <div className="categoria-cuerpo">
                       <div className="categoria-fila">
                         <span>

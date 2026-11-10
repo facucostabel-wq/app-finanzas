@@ -14,6 +14,8 @@ export type Categoria = {
   activa: boolean
   /** "Moneda extranjera": cada subcategoría es una moneda y la cantidad son las divisas compradas. */
   es_divisas: boolean
+  /** Ícono elegido (clave de ICONOS); null = automático según el nombre. */
+  icono: string | null
 }
 
 export type Movimiento = {
@@ -156,13 +158,18 @@ export function useCategorias() {
   const [error, setError] = useState<string | null>(null)
 
   const recargar = useCallback(async () => {
-    const { data, error } = await supabase
+    const campos = 'id, tipo, nombre, orden, activa, es_divisas'
+    let { data, error }: { data: unknown[] | null; error: { code?: string; message: string } | null } = await supabase
       .from('categorias')
-      .select('id, tipo, nombre, orden, activa, es_divisas')
+      .select(`${campos}, icono`)
       .order('orden')
       .order('nombre')
+    // Base sin la columna de íconos todavía: se leen igual, con ícono automático.
+    if (error?.code === '42703') {
+      ;({ data, error } = await supabase.from('categorias').select(campos).order('orden').order('nombre'))
+    }
     if (error) setError(error.message)
-    else setCategorias(data as Categoria[])
+    else setCategorias(((data ?? []) as Partial<Categoria>[]).map((c) => ({ icono: null, ...c }) as Categoria))
     setLoading(false)
   }, [])
 
@@ -282,14 +289,14 @@ export function ordenarMonedas(monedas: Iterable<Moneda>, favoritas: Moneda[]): 
 
 /** Gastos agrupados por categoría, de mayor a menor. */
 export function gastosPorCategoria(movs: Movimiento[], moneda: Moneda, categorias: Categoria[]) {
-  const nombres = new Map(categorias.map((c) => [c.id, c.nombre]))
+  const porId = new Map(categorias.map((c) => [c.id, c]))
   const acc = new Map<string, number>()
   for (const m of movs) {
     if (m.tipo !== 'gasto' || m.moneda !== moneda || !m.categoria_id) continue
     acc.set(m.categoria_id, (acc.get(m.categoria_id) ?? 0) + m.monto)
   }
   return [...acc.entries()]
-    .map(([id, total]) => ({ id, nombre: nombres.get(id) ?? '—', total }))
+    .map(([id, total]) => ({ id, nombre: porId.get(id)?.nombre ?? '—', icono: porId.get(id)?.icono ?? null, total }))
     .sort((a, b) => b.total - a.total)
 }
 

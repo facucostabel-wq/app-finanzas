@@ -16,6 +16,7 @@ export default function Movimientos() {
   const { movimientos, loading, error } = useMovimientosDelMes(mes)
   const { categorias } = useCategorias()
   const nombres = new Map(categorias.map((c) => [c.id, c.nombre]))
+  const iconos = new Map(categorias.map((c) => [c.id, c.icono]))
   const { activos } = useActivos()
   const { cuentas } = useCuentas()
   const cuenta = new Map(cuentas.map((c) => [c.id, c]))
@@ -144,7 +145,7 @@ export default function Movimientos() {
               {d.items.map((m) => (
                 <li key={m.id}>
                   <Link to={`/movimiento/${m.id}`} className="fila fila-mov">
-                    <IconoCategoria nombre={tituloMov(m)} tipo={m.tipo} />
+                    <IconoCategoria nombre={tituloMov(m)} tipo={m.tipo} icono={m.categoria_id ? iconos.get(m.categoria_id) : null} />
                     <div className="mov-texto">
                       <div className="mov-titulo">
                         {tituloMov(m)}
