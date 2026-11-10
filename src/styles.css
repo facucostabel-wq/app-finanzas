@@ -491,3 +491,6 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .subpagina h1 { margin: 4px 0 0; }
 .volver { color: var(--accent); text-decoration: none; font-size: 0.95rem; display: inline-block; padding: 6px 0; }
 .compartir-app { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.zona-peligro h2 { color: var(--error); }
+button.peligro:disabled { opacity: 0.45; }
+.lista-simple { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--muted); }

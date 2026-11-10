@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
-import { abrirTutorial } from '../components/Tutorial'
+import MiCuenta from '../components/MiCuenta'
 import AvisoPush from '../components/AvisoPush'
 import { desactivarPush } from '../lib/push'
 import { useAuth } from '../lib/auth'
@@ -313,13 +313,7 @@ export default function Ajustes() {
       )}
       {seccion === 'cuenta' && (
         <>
-      <section className="card">
-        <p className="muted">{session?.user.email}</p>
-        <Link to="/privacidad">Política de privacidad</Link>
-        <button className="secundario" onClick={abrirTutorial}>
-          Ver el tutorial
-        </button>
-      </section>
+      <MiCuenta />
         </>
       )}
       <BottomNav />

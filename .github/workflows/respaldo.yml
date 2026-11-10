@@ -1,0 +1,70 @@
+# Respaldo diario de la base (Supabase Free no incluye backups).
+#
+# Guarda una copia CIFRADA como "artifact" de GitHub durante 30 días. Como el repo es
+# público, el archivo se cifra con una clave que solo está en los secretos del repo:
+# sin esa clave el archivo no sirve para nada.
+#
+# Necesita dos secretos (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL  cadena de conexión "Session pooler" de Supabase, con la contraseña
+#   RESPALDO_CLAVE   una frase larga que inventás vos (guardala: sin ella no se puede abrir)
+#
+# Cómo restaurar: ver docs/respaldos.md
+name: Respaldo diario
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # 03:17 en Argentina
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  respaldo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      CLAVE: ${{ secrets.RESPALDO_CLAVE }}
+    steps:
+      - name: Verificar secretos
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$CLAVE" ]; then
+            echo "::error::Faltan los secretos SUPABASE_DB_URL o RESPALDO_CLAVE"
+            exit 1
+          fi
+
+      - name: Instalar pg_dump 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Volcar y cifrar
+        run: |
+          set -euo pipefail
+          PG=/usr/lib/postgresql/17/bin
+          F="respaldo-$(date -u +%Y-%m-%d)"
+          mkdir "$F"
+          # Todo lo de la app (estructura + datos).
+          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges -Fc -f "$F/public.dump"
+          # Los usuarios (para que los datos sigan asociados a sus cuentas si hay que restaurar).
+          if ! "$PG/pg_dump" "$DB_URL" --data-only --table=auth.users --table=auth.identities --no-owner -Fc -f "$F/usuarios.dump"; then
+            echo "::warning::No se pudieron copiar los usuarios; el respaldo de datos sí se hizo."
+            rm -f "$F/usuarios.dump"
+          fi
+          tar -czf "$F.tar.gz" "$F"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$CLAVE" --symmetric --cipher-algo AES256 -o "$F.tar.gz.gpg" "$F.tar.gz"
+          rm -rf "$F" "$F.tar.gz"
+          echo "ARCHIVO=$F.tar.gz.gpg" >> "$GITHUB_ENV"
+          ls -la "$F.tar.gz.gpg"
+
+      - name: Guardar el respaldo cifrado
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARCHIVO }}
+          path: ${{ env.ARCHIVO }}
+          retention-days: 30
+          if-no-files-found: error
