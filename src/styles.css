@@ -471,3 +471,22 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .aviso-push p, .aviso-push-ajustes p { margin: 0; }
 .aviso-push .link { justify-self: center; }
 .aviso-push-ajustes { display: grid; gap: 10px; }
+
+/* Menú de Ajustes */
+.menu { padding: 4px 0; display: grid; margin-bottom: 16px; }
+.menu-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px 18px; color: inherit; text-decoration: none;
+  border-top: 1px solid var(--border);
+}
+.menu-item:first-child { border-top: 0; }
+.menu-item:active { background: var(--bg); }
+.menu-icono {
+  width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: var(--accent-suave); color: var(--accent);
+}
+.menu-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.menu-texto .chico { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-flecha { color: var(--muted); font-size: 1.4rem; line-height: 1; }
+.subpagina { margin-bottom: 16px; }
+.subpagina h1 { margin: 4px 0 0; }
+.volver { color: var(--accent); text-decoration: none; font-size: 0.95rem; display: inline-block; padding: 6px 0; }

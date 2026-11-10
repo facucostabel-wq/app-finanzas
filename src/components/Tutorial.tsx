@@ -47,7 +47,7 @@ const PASOS: Paso[] = [
         <p>Las tarjetas de crédito se agregan dentro del banco al que pertenecen.</p>
       </>
     ),
-    accion: { texto: 'Ir a mis cuentas', a: '/ajustes' },
+    accion: { texto: 'Ir a mis cuentas', a: '/ajustes/cuentas' },
   },
   {
     titulo: '2. Anotá cada movimiento',

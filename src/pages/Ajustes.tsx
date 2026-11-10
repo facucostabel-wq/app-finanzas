@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
 import { abrirTutorial } from '../components/Tutorial'
@@ -26,6 +26,7 @@ const TIPOS_CATEGORIA: [TipoCategoria, string][] = [
 ]
 
 export default function Ajustes() {
+  const { seccion } = useParams()
   const { session } = useAuth()
   const { perfil, recargar: recargarPerfil } = usePerfil()
   const { categorias, recargar } = useCategorias()
@@ -99,17 +100,60 @@ export default function Ajustes() {
 
   const delTipo = categorias.filter((c) => c.tipo === tipo)
 
+  const titulos: Record<string, string> = {
+    cuentas: 'Cuentas',
+    monedas: 'Monedas favoritas',
+    categorias: 'Categorías',
+    notificaciones: 'Notificaciones',
+    cuenta: 'Mi cuenta',
+  }
+  const titulo = seccion ? titulos[seccion] : undefined
+
+  if (!seccion || !titulo) {
+    const activas = categorias.filter((c) => c.activa).length
+    return (
+      <main className="screen con-nav">
+        <header className="topbar">
+          <h1>Ajustes</h1>
+        </header>
+        {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
+        <nav className="menu card" aria-label="Secciones de ajustes">
+          <ItemMenu a="cuentas" titulo="Cuentas" detalle={principales.length === 1 ? '1 cuenta' : `${principales.length} cuentas`} icono="M3 7h18v12H3zM3 11h18M7 15h3" />
+          <ItemMenu a="monedas" titulo="Monedas favoritas" detalle={favoritas.join(', ')} icono="M12 3v18M16.5 7.5c0-1.9-2-3-4.5-3s-4.5 1.2-4.5 3.2c0 4.6 9 2.3 9 7 0 2-2 3.3-4.5 3.3s-4.5-1.1-4.5-3" />
+          <ItemMenu a="categorias" titulo="Categorías" detalle={`${activas} activas`} icono="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
+          <ItemMenu a="notificaciones" titulo="Notificaciones" detalle="Avisos de tus grupos" icono="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+          <ItemMenu a="cuenta" titulo="Mi cuenta" detalle={session?.user.email ?? ''} icono="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6" />
+        </nav>
+        <button
+          className="secundario boton-ancho"
+          onClick={async () => {
+            // Este dispositivo deja de recibir avisos de esta cuenta.
+            await desactivarPush()
+            await supabase.auth.signOut()
+          }}
+        >
+          Cerrar sesión
+        </button>
+        <BottomNav />
+      </main>
+    )
+  }
+
   return (
     <main className="screen con-nav">
-      <header className="topbar">
-        <h1>Ajustes</h1>
+      <header className="subpagina">
+        <Link to="/ajustes" className="volver" aria-label="Volver a Ajustes">
+          ‹ Ajustes
+        </Link>
+        <h1>{titulo}</h1>
       </header>
 
       {error && <p className="error">{error}</p>}
-      {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
+      {errorCuentas && seccion === 'cuentas' && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
 
+      {seccion === 'cuentas' && (
+        <>
       <section className="card">
-        <h2>Cuentas</h2>
         <p className="muted chico">Bancos, billeteras, efectivo y brokers, con sus saldos y tarjetas de crédito.</p>
         <ul className="lista">
           {principales.map((c) => {
@@ -160,9 +204,11 @@ export default function Ajustes() {
           {okFecha && <p className="info">Fecha guardada.</p>}
         </details>
       </section>
-
+        </>
+      )}
+      {seccion === 'monedas' && (
+        <>
       <section className="card">
-        <h2>Monedas favoritas</h2>
         <p className="muted chico">Aparecen primero en la lista de monedas. La primera es la que viene elegida al cargar.</p>
         <ul className="lista">
           {favoritas.map((m, i) => (
@@ -208,9 +254,11 @@ export default function Ajustes() {
           />
         )}
       </section>
-
+        </>
+      )}
+      {seccion === 'categorias' && (
+        <>
       <section className="card">
-        <h2>Categorías</h2>
         <div className="segmentado chico" role="group" aria-label="Tipo de categoría">
           {TIPOS_CATEGORIA.map(([v, t]) => (
             <button key={v} aria-pressed={tipo === v} onClick={() => setTipo(v)}>
@@ -250,36 +298,123 @@ export default function Ajustes() {
         </div>
         <p className="muted chico">Tocá un nombre para renombrarlo. Ocultar una categoría no borra sus movimientos.</p>
       </section>
-
+        </>
+      )}
+      {seccion === 'notificaciones' && (
+        <>
       <section className="card">
-        <h2>Notificaciones de grupos</h2>
-        <p className="muted chico">
-          Te avisamos cuando alguien carga, edita o borra un gasto en el que tenés parte, registra un pago con vos o se
-          une a uno de tus grupos. Lo que hacés vos no te lo avisa.
-        </p>
+        <h2>En este dispositivo</h2>
+        <p className="muted chico">Las notificaciones push llegan al celular aunque la app esté cerrada. Se activan en cada dispositivo.</p>
         <AvisoPush />
       </section>
-
+      <PreferenciasAvisos />
+        </>
+      )}
+      {seccion === 'cuenta' && (
+        <>
       <section className="card">
-        <h2>Cuenta</h2>
         <p className="muted">{session?.user.email}</p>
         <Link to="/privacidad">Política de privacidad</Link>
         <button className="secundario" onClick={abrirTutorial}>
           Ver el tutorial
         </button>
-        <button
-          className="secundario"
-          onClick={async () => {
-            // Este dispositivo deja de recibir avisos de esta cuenta.
-            await desactivarPush()
-            await supabase.auth.signOut()
-          }}
-        >
-          Cerrar sesión
-        </button>
       </section>
-
+        </>
+      )}
       <BottomNav />
     </main>
+  )
+}
+
+function ItemMenu({ a, titulo, detalle, icono }: { a: string; titulo: string; detalle: string; icono: string }) {
+  return (
+    <Link to={`/ajustes/${a}`} className="menu-item">
+      <span className="menu-icono" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d={icono} />
+        </svg>
+      </span>
+      <span className="menu-texto">
+        <span>{titulo}</span>
+        {detalle && <span className="muted chico">{detalle}</span>}
+      </span>
+      <span className="menu-flecha" aria-hidden="true">›</span>
+    </Link>
+  )
+}
+
+const AVISOS: { tipo: string; titulo: string; detalle: string }[] = [
+  { tipo: 'gasto_nuevo', titulo: 'Gasto nuevo', detalle: 'Alguien cargó un gasto en el que tenés parte' },
+  { tipo: 'gasto_cambio', titulo: 'Gasto editado o borrado', detalle: 'Cambió o se borró un gasto en el que tenés parte' },
+  { tipo: 'pago', titulo: 'Pago registrado', detalle: 'Alguien registró un pago con vos' },
+  { tipo: 'union', titulo: 'Alguien se unió', detalle: 'Una persona nueva entró a uno de tus grupos' },
+]
+
+/** Qué avisos recibir (vale para el aviso dentro de la app y para el push). */
+function PreferenciasAvisos() {
+  const { session } = useAuth()
+  const uid = session?.user.id
+  const [apagados, setApagados] = useState<string[] | null>(null)
+  const [falta, setFalta] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!uid) return
+    supabase
+      .from('perfiles')
+      .select('avisos_off')
+      .eq('id', uid)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) setFalta(true)
+        else setApagados((data?.avisos_off as string[] | undefined) ?? [])
+      })
+  }, [uid])
+
+  async function cambiar(tipo: string, prendido: boolean) {
+    if (!apagados || !uid) return
+    const nuevos = prendido ? apagados.filter((t) => t !== tipo) : [...apagados, tipo]
+    setApagados(nuevos)
+    setError(null)
+    const { error } = await supabase.from('perfiles').update({ avisos_off: nuevos }).eq('id', uid)
+    if (error) {
+      setError(`No se pudo guardar: ${error.message}`)
+      setApagados(apagados)
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>Qué te avisamos</h2>
+      <p className="muted chico">Vale para el numerito en Grupos y para el push. Lo que hacés vos nunca te lo avisa.</p>
+      {falta ? (
+        <p className="muted">Falta ejecutar el SQL de notificaciones en Supabase.</p>
+      ) : (
+        <ul className="lista">
+          {AVISOS.map((a) => {
+            const prendido = !apagados?.includes(a.tipo)
+            return (
+              <li key={a.tipo} className="fila">
+                <div>
+                  <div>{a.titulo}</div>
+                  <div className="muted chico">{a.detalle}</div>
+                </div>
+                <label className="interruptor">
+                  <input
+                    type="checkbox"
+                    checked={prendido}
+                    disabled={!apagados}
+                    onChange={(e) => cambiar(a.tipo, e.target.checked)}
+                    aria-label={`${prendido ? 'Apagar' : 'Prender'} aviso: ${a.titulo}`}
+                  />
+                  <span>{prendido ? 'Sí' : 'No'}</span>
+                </label>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {error && <p className="error">{error}</p>}
+    </section>
   )
 }

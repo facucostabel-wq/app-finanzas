@@ -401,7 +401,7 @@ export default function MovimientoForm() {
 
         {cuentas.length === 0 && (
           <p className="aviso">
-            Todavía no tenés cuentas. <Link to="/ajustes">Creá una en Ajustes</Link> (banco, billetera, efectivo o
+            Todavía no tenés cuentas. <Link to="/ajustes/cuentas">Creá una en Ajustes</Link> (banco, billetera, efectivo o
             tarjeta) para poder cargar movimientos.
           </p>
         )}

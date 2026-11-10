@@ -99,6 +99,7 @@ export default function App() {
       <Route path="/movimiento/:id" element={protegida(<MovimientoForm />)} />
       <Route path="/inversiones" element={protegida(<Inversiones />)} />
       <Route path="/ajustes" element={protegida(<Ajustes />)} />
+      <Route path="/ajustes/:seccion" element={protegida(<Ajustes />)} />
       <Route path="/grupos" element={protegida(<Grupos />)} />
       <Route path="/grupos/:id" element={protegida(<GrupoDetalle />)} />
       <Route path="/grupos/:id/gasto/:gastoId" element={protegida(<GastoGrupoForm />)} />

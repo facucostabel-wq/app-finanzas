@@ -177,7 +177,7 @@ export default function Home() {
               </div>
             )}
             {!cargandoSaldos && saldos.length === 0 && (
-              <Link to="/ajustes" className="aviso">
+              <Link to="/ajustes/cuentas" className="aviso">
                 Cargá tu saldo inicial en Ajustes para que este número refleje tu plata real.
               </Link>
             )}

@@ -30,8 +30,10 @@ create table if not exists public.push_suscripciones (
   creado_at timestamptz not null default now()
 );
 alter table public.push_suscripciones enable row level security;
+drop policy if exists "push: ver las mías" on public.push_suscripciones;
 create policy "push: ver las mías" on public.push_suscripciones
   for select to authenticated using (usuario_id = (select auth.uid()));
+drop policy if exists "push: borrar las mías" on public.push_suscripciones;
 create policy "push: borrar las mías" on public.push_suscripciones
   for delete to authenticated using (usuario_id = (select auth.uid()));
 revoke insert, update on public.push_suscripciones from anon, authenticated;
@@ -48,14 +50,21 @@ create table if not exists public.notificaciones (
 );
 create index if not exists notificaciones_usuario on public.notificaciones (usuario_id, leida, creado_at desc);
 alter table public.notificaciones enable row level security;
+drop policy if exists "notificaciones: ver las mías" on public.notificaciones;
 create policy "notificaciones: ver las mías" on public.notificaciones
   for select to authenticated using (usuario_id = (select auth.uid()));
+drop policy if exists "notificaciones: marcar las mías" on public.notificaciones;
 create policy "notificaciones: marcar las mías" on public.notificaciones
   for update to authenticated using (usuario_id = (select auth.uid())) with check (usuario_id = (select auth.uid()));
+drop policy if exists "notificaciones: borrar las mías" on public.notificaciones;
 create policy "notificaciones: borrar las mías" on public.notificaciones
   for delete to authenticated using (usuario_id = (select auth.uid()));
 revoke insert, update on public.notificaciones from anon, authenticated;
 grant update (leida) on public.notificaciones to authenticated;
+
+-- Qué avisos apagó cada usuario: 'gasto_nuevo', 'gasto_cambio', 'pago', 'union'.
+alter table public.perfiles add column if not exists avisos_off text[] not null default '{}';
+grant update (avisos_off) on public.perfiles to authenticated;
 
 -- Clave pública para suscribirse (es pública por diseño).
 create or replace function public.clave_push()
@@ -111,7 +120,8 @@ $$;
 
 -- Guarda el aviso y manda el push a cada dispositivo del destinatario.
 -- Nunca avisa a quien hizo la acción.
-create or replace function public.notificar(p_usuario uuid, p_grupo uuid, p_titulo text, p_texto text)
+drop function if exists public.notificar(uuid, uuid, text, text);
+create or replace function public.notificar(p_usuario uuid, p_grupo uuid, p_titulo text, p_texto text, p_tipo text)
 returns void
 language plpgsql
 security definer
@@ -123,6 +133,10 @@ declare
   mensajes jsonb;
 begin
   if p_usuario is null or p_usuario = (select auth.uid()) then
+    return;
+  end if;
+  -- Respeta los avisos que la persona apagó en Ajustes.
+  if exists (select 1 from public.perfiles where id = p_usuario and p_tipo = any (avisos_off)) then
     return;
   end if;
   insert into public.notificaciones (usuario_id, grupo_id, titulo, texto, url)
@@ -155,7 +169,7 @@ begin
   end;
 end;
 $$;
-revoke all on function public.notificar(uuid, uuid, text, text) from public, anon, authenticated;
+revoke all on function public.notificar(uuid, uuid, text, text, text) from public, anon, authenticated;
 revoke all on function public.mi_nombre_en(uuid) from public, anon, authenticated;
 
 -- Avisa a todos los que participan de un gasto (quien pagó y quienes tienen parte).
@@ -191,7 +205,8 @@ begin
       r.usuario_id, gg.grupo_id, gnom,
       quien || ' ' || p_verbo || ' «' || gg.descripcion || '» (' || public.texto_monto(gg.monto, gg.moneda) || ')'
         || case when p_verbo <> 'borró' and coalesce(parte, 0) > 0
-             then '. Tu parte: ' || public.texto_monto(parte, gg.moneda) else '' end
+             then '. Tu parte: ' || public.texto_monto(parte, gg.moneda) else '' end,
+      case when p_verbo = 'cargó' then 'gasto_nuevo' else 'gasto_cambio' end
     );
   end loop;
 end;
@@ -244,7 +259,7 @@ begin
   end if;
   perform public.asegurar_cuenta_grupo(g, uid);
   for r in select usuario_id from public.grupo_miembros where grupo_id = g and usuario_id is not null and usuario_id <> uid loop
-    perform public.notificar(r.usuario_id, g, gnom, public.mi_nombre_en(g) || ' se unió al grupo');
+    perform public.notificar(r.usuario_id, g, gnom, public.mi_nombre_en(g) || ' se unió al grupo', 'union');
   end loop;
   return g;
 end;
@@ -339,10 +354,10 @@ begin
   -- A quien recibió la plata y a quien la pagó, cada uno con su versión.
   perform public.notificar(a_uid, p_grupo, gnom,
     case when de_uid = (select auth.uid()) then quien || ' registró que te pagó ' || plata
-         else quien || ' registró que ' || de_nom || ' te pagó ' || plata end);
+         else quien || ' registró que ' || de_nom || ' te pagó ' || plata end, 'pago');
   perform public.notificar(de_uid, p_grupo, gnom,
     case when a_uid = (select auth.uid()) then quien || ' registró que le pagaste ' || plata
-         else quien || ' registró que le pagaste ' || plata || ' a ' || a_nom end);
+         else quien || ' registró que le pagaste ' || plata || ' a ' || a_nom end, 'pago');
   return lid;
 end;
 $$;
