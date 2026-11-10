@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { marcarLeidas } from '../lib/push'
 import Combobox, { type Opcion } from '../components/Combobox'
 import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, nombreDia, parseMonto } from '../lib/format'
@@ -38,6 +39,10 @@ export default function GrupoDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { grupo, miembros, gastos, divisiones, pagos, vinculos, cuentaGrupo, miMiembro, loading, recargar } = useGrupo(id)
+  // Al abrir el grupo, sus avisos quedan como leídos.
+  useEffect(() => {
+    if (id) marcarLeidas(id)
+  }, [id])
   const { categorias } = useCategorias()
   const { cuentas } = useCuentas()
   const [invitado, setInvitado] = useState('')

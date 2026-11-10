@@ -2,6 +2,7 @@ import type React from 'react'
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Tutorial from './components/Tutorial'
+import { sincronizarPush } from './lib/push'
 import { useAuth } from './lib/auth'
 import { usePerfil } from './lib/perfil'
 import { missingVars, supabase, supabaseMissingConfig, vinoDeRecuperacion } from './lib/supabase'
@@ -35,6 +36,12 @@ export default function App() {
     })
     return () => data.subscription.unsubscribe()
   }, [navigate])
+
+  // Si este dispositivo tenía avisos activos, quedan a nombre de la cuenta que entró.
+  const uid = session?.user.id
+  useEffect(() => {
+    if (uid) sincronizarPush()
+  }, [uid])
 
   // Si alguien abre un link (ej. invitación a un grupo) sin estar logueado, se guarda
   // adónde iba y se lo lleva ahí después de ingresar.

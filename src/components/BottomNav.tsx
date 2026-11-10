@@ -1,7 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useNoLeidas } from '../lib/push'
 
 export default function BottomNav() {
   const navigate = useNavigate()
+  const { items } = useNoLeidas()
+  const sinLeer = items.length
   return (
     <>
       <button className="fab" onClick={() => navigate('/nuevo')} aria-label="Cargar movimiento">
@@ -18,8 +21,11 @@ export default function BottomNav() {
           <Icono d="M4 6h16M4 12h16M4 18h10" />
           Movimientos
         </NavLink>
-        <NavLink to="/grupos">
-          <Icono d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        <NavLink to="/grupos" aria-label={sinLeer ? `Grupos, ${sinLeer} sin leer` : undefined}>
+          <span className="nav-icono">
+            <Icono d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            {sinLeer > 0 && <span className="nav-badge">{sinLeer > 9 ? '9+' : sinLeer}</span>}
+          </span>
           Grupos
         </NavLink>
         <NavLink to="/inversiones">

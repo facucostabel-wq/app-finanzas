@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox from '../components/Combobox'
 import { abrirTutorial } from '../components/Tutorial'
+import AvisoPush from '../components/AvisoPush'
+import { desactivarPush } from '../lib/push'
 import { useAuth } from '../lib/auth'
 import {
   TEXTO_TIPO_CUENTA,
@@ -250,13 +252,29 @@ export default function Ajustes() {
       </section>
 
       <section className="card">
+        <h2>Notificaciones de grupos</h2>
+        <p className="muted chico">
+          Te avisamos cuando alguien carga, edita o borra un gasto en el que tenés parte, registra un pago con vos o se
+          une a uno de tus grupos. Lo que hacés vos no te lo avisa.
+        </p>
+        <AvisoPush />
+      </section>
+
+      <section className="card">
         <h2>Cuenta</h2>
         <p className="muted">{session?.user.email}</p>
         <Link to="/privacidad">Política de privacidad</Link>
         <button className="secundario" onClick={abrirTutorial}>
           Ver el tutorial
         </button>
-        <button className="secundario" onClick={() => supabase.auth.signOut()}>
+        <button
+          className="secundario"
+          onClick={async () => {
+            // Este dispositivo deja de recibir avisos de esta cuenta.
+            await desactivarPush()
+            await supabase.auth.signOut()
+          }}
+        >
           Cerrar sesión
         </button>
       </section>

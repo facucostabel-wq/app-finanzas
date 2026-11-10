@@ -9,6 +9,8 @@ import { useCuentas, useSaldosCuentas } from '../lib/datos'
 import { mesActual } from '../lib/format'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
+import AvisoPush from '../components/AvisoPush'
+import { marcarLeidas, useNoLeidas } from '../lib/push'
 
 export default function Grupos() {
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export default function Grupos() {
   const [moneda, setMoneda] = useState(perfil?.monedas_favoritas?.[0] ?? 'ARS')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const { items: novedades } = useNoLeidas()
 
   // Mi posición en cada grupo = saldo de mi cuenta personal de ese grupo (lo registrado).
   const posicion = (grupoId: string) => {
@@ -47,6 +50,34 @@ export default function Grupos() {
         Gastos compartidos con amigos, pareja o viajes. Cada uno ve lo del grupo; tus finanzas personales siguen siendo
         solo tuyas.
       </p>
+
+      {novedades.length > 0 && (
+        <section className="novedades" aria-labelledby="novedades-titulo">
+          <div className="novedades-cabecera">
+            <h2 id="novedades-titulo">Novedades</h2>
+            <button type="button" className="link-discreto" onClick={() => marcarLeidas()}>
+              Marcar como leídas
+            </button>
+          </div>
+          <ul className="lista card">
+            {novedades.slice(0, 8).map((n) => (
+              <li key={n.id}>
+                <Link to={n.url} className="fila novedad">
+                  <span className="novedad-punto" aria-hidden="true" />
+                  <span className="novedad-texto">
+                    <span className="chico muted">
+                      {n.titulo} · {hace(n.creado_at)}
+                    </span>
+                    <span>{n.texto}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <AvisoPush compacto />
 
       {loading ? (
         <p className="muted">Cargando…</p>
@@ -106,4 +137,14 @@ export default function Grupos() {
       <BottomNav />
     </main>
   )
+}
+
+function hace(fecha: string) {
+  const min = Math.round((Date.now() - new Date(fecha).getTime()) / 60000)
+  if (min < 1) return 'recién'
+  if (min < 60) return `hace ${min} min`
+  const h = Math.round(min / 60)
+  if (h < 24) return `hace ${h} h`
+  const d = Math.round(h / 24)
+  return d === 1 ? 'ayer' : `hace ${d} días`
 }
