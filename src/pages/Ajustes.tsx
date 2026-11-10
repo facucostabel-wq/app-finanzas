@@ -124,6 +124,7 @@ export default function Ajustes() {
           <ItemMenu a="notificaciones" titulo="Notificaciones" detalle="Avisos de tus grupos" icono="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />
           <ItemMenu a="cuenta" titulo="Mi cuenta" detalle={session?.user.email ?? ''} icono="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6" />
         </nav>
+        <CompartirApp />
         <button
           className="secundario boton-ancho"
           onClick={async () => {
@@ -416,5 +417,45 @@ function PreferenciasAvisos() {
       )}
       {error && <p className="error">{error}</p>}
     </section>
+  )
+}
+
+/** Comparte el link de la app (menú de compartir del celular o, si no hay, copia el link). */
+function CompartirApp() {
+  const [copiado, setCopiado] = useState(false)
+  const url = window.location.origin
+  async function compartir() {
+    const datos = {
+      title: 'Finanzas',
+      text: 'Te paso la app que uso para anotar gastos e inversiones y dividir gastos con amigos:',
+      url,
+    }
+    try {
+      if (navigator.share) return await navigator.share(datos)
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2500)
+    } catch {
+      window.prompt('Copiá el link de la app:', url)
+    }
+  }
+  return (
+    <>
+      <button className="primary boton-ancho compartir-app" onClick={compartir}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />
+        </svg>
+        Compartir la app
+      </button>
+      {copiado && (
+        <p className="info chico" role="status">
+          Link copiado: {url}
+        </p>
+      )}
+    </>
   )
 }
