@@ -16,6 +16,7 @@ import {
   type Pendiente,
 } from '../lib/grupos'
 import { supabase } from '../lib/supabase'
+import InputNumero from '../components/InputNumero'
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
@@ -394,7 +395,7 @@ function Saldar(props: {
       <h2>{pago ? `Pagarle a ${nombre(deuda.a)}` : `${nombre(deuda.de)} te pagó`}</h2>
       <label>
         Monto ({deuda.moneda})
-        <input inputMode="decimal" value={montoTexto} onChange={(e) => setMontoTexto(e.target.value)} />
+        <InputNumero value={montoTexto} onChange={setMontoTexto} />
       </label>
       <Combobox etiqueta={pago ? 'Pagás con' : 'Entró a'} opciones={opcionesCuenta} valor={cuenta} onCambio={setCuenta} />
       {error && <p className="error">{error}</p>}

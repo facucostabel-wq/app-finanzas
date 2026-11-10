@@ -59,9 +59,22 @@ export function formatPrecio(precio: number, moneda: Moneda): string {
   }
 }
 
-/** Número guardado → texto editable ("12345.5" → "12345,5"). */
-export function montoAEditable(monto: number): string {
-  return String(monto).replace('.', ',')
+/**
+ * Texto de un campo numérico con formato argentino mientras se escribe:
+ * "1500000,5" → "1.500.000,5". Deja solo dígitos y una coma decimal.
+ */
+export function formatearNumero(texto: string, maxDecimales = 2): string {
+  const coma = texto.indexOf(',')
+  const entera = (coma >= 0 ? texto.slice(0, coma) : texto).replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  const conPuntos = entera.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  if (coma < 0 || maxDecimales === 0) return conPuntos
+  const decimales = texto.slice(coma + 1).replace(/\D/g, '').slice(0, maxDecimales)
+  return `${conPuntos || '0'},${decimales}`
+}
+
+/** Número guardado → texto editable ("12345.5" → "12.345,5"). */
+export function montoAEditable(monto: number, maxDecimales = 10): string {
+  return formatearNumero(String(monto).replace('.', ','), maxDecimales)
 }
 
 /** Fecha local de hoy en formato YYYY-MM-DD. */

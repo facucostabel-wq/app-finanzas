@@ -11,6 +11,7 @@ import { formatMonto, hoyISO, montoAEditable, parseMonto } from '../lib/format'
 import { calcularPlan, calcularProgreso } from '../lib/objetivos'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
+import InputNumero from '../components/InputNumero'
 
 type Hoja = 'apartar' | 'liberar' | 'vincular' | 'comprar' | null
 
@@ -343,7 +344,7 @@ export default function ObjetivoDetalle() {
                 <div className="monto-y-moneda">
                   <label>
                     {hoja === 'comprar' ? '¿Cuánto pagaste?' : 'Monto'}
-                    <input className="monto-input" inputMode="decimal" value={montoTexto} onChange={(e) => setMontoTexto(e.target.value)} placeholder="0" autoFocus />
+                    <InputNumero className="monto-input" value={montoTexto} onChange={setMontoTexto} placeholder="0" autoFocus />
                   </label>
                   <Combobox etiqueta="Moneda" opciones={opcionesMoneda} valor={moneda} onCambio={setMoneda} />
                 </div>

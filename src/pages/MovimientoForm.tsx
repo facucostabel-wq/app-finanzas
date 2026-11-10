@@ -16,6 +16,7 @@ import { formatMonto, formatPrecio, hoyISO, montoAEditable, nombreMes, parseCant
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
+import InputNumero from '../components/InputNumero'
 
 type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'transferencia'
 
@@ -380,12 +381,11 @@ export default function MovimientoForm() {
 
         <label>
           {enCuotas ? 'Monto total' : 'Monto'}
-          <input
+          <InputNumero
             className="monto-input"
-            inputMode="decimal"
             placeholder="0"
             value={montoTexto}
-            onChange={(e) => setMontoTexto(e.target.value)}
+            onChange={setMontoTexto}
             autoFocus={!editando}
             aria-invalid={montoTexto !== '' && !monto}
           />
@@ -466,11 +466,11 @@ export default function MovimientoForm() {
               : sentido === 'aporte'
                 ? 'Cantidad comprada (opcional)'
                 : 'Cantidad vendida (opcional)'}
-            <input
-              inputMode="decimal"
+            <InputNumero
+              decimales={10}
               placeholder="Ej.: 0,0015 · 10 · 1.250"
               value={cantidadTexto}
-              onChange={(e) => setCantidadTexto(e.target.value)}
+              onChange={setCantidadTexto}
               aria-invalid={cantidadTexto !== '' && !cantidad}
             />
             <small className="muted">

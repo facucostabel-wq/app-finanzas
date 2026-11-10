@@ -7,6 +7,7 @@ import { hoyISO, montoAEditable, parseMonto } from '../lib/format'
 import { MONEDAS } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
+import InputNumero from '../components/InputNumero'
 
 /** Alta y edición de un objetivo. */
 export default function ObjetivoForm() {
@@ -97,11 +98,10 @@ export default function ObjetivoForm() {
 
         <label>
           ¿Cuánto cuesta?
-          <input
+          <InputNumero
             className="monto-input"
-            inputMode="decimal"
             value={montoTexto}
-            onChange={(e) => setMontoTexto(e.target.value)}
+            onChange={setMontoTexto}
             placeholder="0"
           />
         </label>

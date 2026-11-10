@@ -7,6 +7,7 @@ import { formatMonto, hoyISO, montoAEditable, parseMonto, parseNumero } from '..
 import { dividirIguales, registrarGasto, useGrupo, type GastoGrupo } from '../lib/grupos'
 import { MONEDAS } from '../lib/monedas'
 import { supabase } from '../lib/supabase'
+import InputNumero from '../components/InputNumero'
 
 type Modo = 'iguales' | 'montos' | 'porcentajes'
 
@@ -176,7 +177,7 @@ export default function GastoGrupoForm() {
           </label>
           <label>
             Monto total
-            <input className="monto-input" inputMode="decimal" placeholder="0" value={montoTexto} onChange={(e) => setMontoTexto(e.target.value)} />
+            <InputNumero className="monto-input" placeholder="0" value={montoTexto} onChange={setMontoTexto} />
           </label>
           <Combobox
             etiqueta="Moneda"
@@ -237,12 +238,11 @@ export default function GastoGrupoForm() {
                     {modo === 'iguales' ? (
                       <span className="muted">{parte ? formatMonto(parte, moneda) : '—'}</span>
                     ) : (
-                      <input
-                        inputMode="decimal"
+                      <InputNumero
                         className="division-input"
                         placeholder="0"
                         value={valores[m.id] ?? ''}
-                        onChange={(e) => setValores({ ...valores, [m.id]: e.target.value })}
+                        onChange={(v) => setValores({ ...valores, [m.id]: v })}
                         aria-label={`${modo === 'montos' ? 'Monto' : 'Porcentaje'} de ${nombre(m.id)}`}
                       />
                     )}

@@ -6,6 +6,7 @@ import { montoAEditable, parseMonto } from '../lib/format'
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
+import InputNumero from '../components/InputNumero'
 
 type Tarjeta = { id: string | null; nombre: string; activa: boolean }
 
@@ -183,11 +184,10 @@ export default function CuentaForm() {
                   <span>
                     {m} <span className="muted chico">{nombreMoneda(m)}</span>
                   </span>
-                  <input
-                    inputMode="decimal"
+                  <InputNumero
                     placeholder="0"
                     value={textoSaldo[m] ?? ''}
-                    onChange={(e) => setTextoSaldo({ ...textoSaldo, [m]: e.target.value })}
+                    onChange={(v) => setTextoSaldo({ ...textoSaldo, [m]: v })}
                   />
                 </label>
               ))}

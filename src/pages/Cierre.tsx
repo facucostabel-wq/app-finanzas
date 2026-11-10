@@ -12,6 +12,7 @@ import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 import { calcularTenencias } from '../lib/tenencias'
 import { useInversiones } from '../lib/datos'
+import InputNumero from '../components/InputNumero'
 
 type Fuente = 'auto' | 'manual'
 const parsePrecio = (t: string) => parseNumero(t, 8)
@@ -78,8 +79,8 @@ export default function Cierre() {
         const id = x.activo_id ? idCripto(nombreActivo.get(x.activo_id) ?? '') : null
         const usd = id ? cripto.get(id) : undefined
         const precio = usd !== undefined ? convertir(usd, 'USD', x.moneda, t) : null
-        if (precio) n[clave] = { v: String(Math.round(precio * 100) / 100).replace('.', ','), f: 'auto' }
-        else if (!n[clave]?.v && base?.precios.get(clave)) n[clave] = { v: String(base.precios.get(clave)!.precio).replace('.', ','), f: 'manual' }
+        if (precio) n[clave] = { v: montoAEditable(Math.round(precio * 100) / 100), f: 'auto' }
+        else if (!n[clave]?.v && base?.precios.get(clave)) n[clave] = { v: montoAEditable(base.precios.get(clave)!.precio), f: 'manual' }
       }
       return n
     })
@@ -97,7 +98,7 @@ export default function Cierre() {
     if (existente) {
       setTiposTxt(Object.fromEntries([...existente.tipos].map(([m, v]) => [m, { v: montoAEditable(v), f: 'manual' as Fuente }])))
       setPreciosTxt(
-        Object.fromEntries([...existente.precios].map(([k, p]) => [k, { v: String(p.precio).replace('.', ','), f: 'manual' as Fuente }])),
+        Object.fromEntries([...existente.precios].map(([k, p]) => [k, { v: montoAEditable(p.precio), f: 'manual' as Fuente }])),
       )
     } else {
       setTiposTxt({})
@@ -258,10 +259,10 @@ export default function Cierre() {
               </span>
               <span className="precio-input">
                 <span className="muted">$</span>
-                <input
-                  inputMode="decimal"
+                <InputNumero
+                  decimales={6}
                   value={tiposTxt[m]?.v ?? ''}
-                  onChange={(e) => setTiposTxt({ ...tiposTxt, [m]: { v: e.target.value, f: 'manual' } })}
+                  onChange={(v) => setTiposTxt({ ...tiposTxt, [m]: { v, f: 'manual' } })}
                   placeholder={trayendo ? '…' : '0'}
                   aria-label={`Pesos por ${m}`}
                 />
@@ -297,10 +298,10 @@ export default function Cierre() {
                     </div>
                     <span className="precio-input">
                       <span className="muted">{t.moneda === 'ARS' ? '$' : t.moneda}</span>
-                      <input
-                        inputMode="decimal"
+                      <InputNumero
+                        decimales={8}
                         value={preciosTxt[clave]?.v ?? ''}
-                        onChange={(e) => setPreciosTxt({ ...preciosTxt, [clave]: { v: e.target.value, f: 'manual' } })}
+                        onChange={(v) => setPreciosTxt({ ...preciosTxt, [clave]: { v, f: 'manual' } })}
                         placeholder="Precio"
                         aria-label={`Precio de ${t.activo_id ? nombreActivo.get(t.activo_id) : 'la inversión'}`}
                       />
