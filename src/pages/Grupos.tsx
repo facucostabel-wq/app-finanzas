@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
+import BotonMenu from '../components/BotonMenu'
 import Combobox from '../components/Combobox'
 import { formatMonto } from '../lib/format'
 import { useGrupos } from '../lib/grupos'
@@ -44,7 +45,10 @@ export default function Grupos() {
   return (
     <main className="screen con-nav">
       <header className="topbar">
-        <h1>Grupos</h1>
+        <div className="topbar-izq">
+          <BotonMenu />
+          <h1>Grupos</h1>
+        </div>
       </header>
       <p className="muted chico">
         Gastos compartidos con amigos, pareja o viajes. Cada uno ve lo del grupo; tus finanzas personales siguen siendo

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
+import BotonMenu from '../components/BotonMenu'
 import Combobox, { type Opcion } from '../components/Combobox'
 import IconoCategoria from '../components/IconoCategoria'
 import { Funnel } from 'lucide-react'
@@ -92,7 +93,10 @@ export default function Movimientos() {
   return (
     <main className="screen con-nav">
       <header className="topbar">
-        <h1>Movimientos</h1>
+        <div className="topbar-izq">
+          <BotonMenu />
+          <h1>Movimientos</h1>
+        </div>
         <button
           type="button"
           className={`boton-icono ${hayFiltro || verFiltros ? 'activo' : ''}`}

@@ -41,6 +41,7 @@ import {
   Pill,
   GraduationCap,
   Tv,
+  Laptop,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -60,6 +61,7 @@ export const ICONOS: Record<string, { Icono: LucideIcon; nombre: string }> = {
   zap: { Icono: Zap, nombre: 'Servicios' },
   wifi: { Icono: Wifi, nombre: 'Internet' },
   phone: { Icono: Smartphone, nombre: 'Celular' },
+  laptop: { Icono: Laptop, nombre: 'Compu' },
   tv: { Icono: Tv, nombre: 'TV' },
   clapperboard: { Icono: Clapperboard, nombre: 'Suscripciones' },
   music: { Icono: Music, nombre: 'Música' },
@@ -100,7 +102,8 @@ const REGLAS: [RegExp, LucideIcon][] = [
   [/bar|birra|cerveza|boliche|fiesta/, Beer],
   [/salida|restaurant|resto|comida|delivery|cena|almuerzo|pedidos/, Utensils],
   [/suscrip|netflix|spotify|streaming|hbo|disney|youtube|prime/, Clapperboard],
-  [/celular|tel[eé]fono|personal|claro|movistar|tuenti/, Smartphone],
+  [/compu|notebook|laptop|computadora|\bpc\b|macbook|tablet|ipad/, Laptop],
+  [/celular|tel[eé]fono|iphone|personal|claro|movistar|tuenti/, Smartphone],
   [/servicio|luz|gas|agua|internet|edenor|edesur|metrogas|aysa/, Zap],
   [/expensa|alquiler|casa|hogar|depto|departamento|vivienda/, House],
   [/gimnasio|gym|deporte|profe|entren|f[uú]tbol|padel|p[aá]del/, Dumbbell],

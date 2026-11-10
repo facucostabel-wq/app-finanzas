@@ -19,6 +19,10 @@ import Login from './pages/Login'
 import MovimientoForm from './pages/MovimientoForm'
 import Movimientos from './pages/Movimientos'
 import NuevaClave from './pages/NuevaClave'
+import Objetivos from './pages/Objetivos'
+import ObjetivoForm from './pages/ObjetivoForm'
+import ObjetivoDetalle from './pages/ObjetivoDetalle'
+import Cierre from './pages/Cierre'
 import Privacidad from './pages/Privacidad'
 
 export default function App() {
@@ -98,6 +102,11 @@ export default function App() {
       <Route path="/nuevo" element={protegida(<MovimientoForm key="nuevo" />)} />
       <Route path="/movimiento/:id" element={protegida(<MovimientoForm />)} />
       <Route path="/inversiones" element={protegida(<Inversiones />)} />
+      <Route path="/objetivos" element={protegida(<Objetivos />)} />
+      <Route path="/objetivos/nuevo" element={protegida(<ObjetivoForm />)} />
+      <Route path="/objetivos/:id" element={protegida(<ObjetivoDetalle />)} />
+      <Route path="/objetivos/:id/editar" element={protegida(<ObjetivoForm />)} />
+      <Route path="/cierre" element={protegida(<Cierre />)} />
       <Route path="/ajustes" element={protegida(<Ajustes />)} />
       <Route path="/ajustes/:seccion" element={protegida(<Ajustes />)} />
       <Route path="/grupos" element={protegida(<Grupos />)} />

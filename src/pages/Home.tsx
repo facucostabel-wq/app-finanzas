@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import IconoCategoria from '../components/IconoCategoria'
 import BottomNav from '../components/BottomNav'
+import BotonMenu from '../components/BotonMenu'
+import TarjetaObjetivo from '../components/TarjetaObjetivo'
+import { useObjetivosConContexto } from '../lib/contextoObjetivos'
+import { calcularPlan, calcularProgreso, reservadoEnDisponible } from '../lib/objetivos'
 import {
   esCuentaDisponible,
   nombreCuenta,
@@ -36,6 +40,15 @@ export default function Home() {
   const [monedaElegida, setMonedaElegida] = useState<Moneda | null>(null)
   const [verCalculo, setVerCalculo] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
+  const obj = useObjetivosConContexto()
+  const mesAnterior = moverMes(mesActual(), -1)
+  const [cierreOculto, setCierreOculto] = useState(() => {
+    try {
+      return localStorage.getItem('cierre_oculto') === mesAnterior
+    } catch {
+      return false
+    }
+  })
 
   const nombre = perfil?.nombre?.split(' ')[0]
   const favoritas = perfil?.monedas_favoritas ?? []
@@ -49,6 +62,20 @@ export default function Home() {
     const tipo = tipoDe.get(s.cuenta_id)
     if (tipo && esCuentaDisponible(tipo)) disponible.set(s.moneda, (disponible.get(s.moneda) ?? 0) + s.monto)
   }
+  // Lo destinado a objetivos no se puede gastar: sale del disponible (solo para el mes actual).
+  const reservado = esMesActual
+    ? reservadoEnDisponible(obj.objetivos, obj.vinculos, obj.aportes, cuentas, saldosCuentas)
+    : new Map<Moneda, number>()
+  for (const [m, v] of reservado) disponible.set(m, (disponible.get(m) ?? 0) - v)
+  const monedasReservado = ordenarMonedas(
+    [...reservado.entries()].filter(([, v]) => v >= 0.01).map(([m]) => m),
+    favoritas,
+  )
+  const objetivosVigentes = obj.objetivos.filter((o) => o.estado === 'activo')
+  const faltaCierre =
+    !obj.loading && !cierreOculto && obj.cierres.every((c) => c.mes.slice(0, 7) !== mesAnterior) &&
+    (obj.cierres.length > 0 || objetivosVigentes.length > 0 || obj.ctx.tenencias.some((x) => x.cantidad > 0))
+
   // Saldos por cuenta (para el detalle), solo los que no son cero.
   const futurasDe = (cuentaId: string) => cuotasFuturas.filter((f) => f.cuenta_id === cuentaId)
   const porCuenta = cuentas
@@ -91,7 +118,10 @@ export default function Home() {
   return (
     <main className="screen con-nav resumen">
       <header className="resumen-cabecera">
-        <p className="saludo">Hola{nombre ? `, ${nombre}` : ''}</p>
+        <div className="topbar-izq">
+          <BotonMenu />
+          <p className="saludo">Hola{nombre ? `, ${nombre}` : ''}</p>
+        </div>
         <div className="mes-nav">
           <button onClick={() => setMes(moverMes(mes, -1))} aria-label="Mes anterior">
             ‹
@@ -122,6 +152,12 @@ export default function Home() {
                 ))}
               </p>
             )}
+            {monedasReservado.length > 0 && (
+              <Link to="/objetivos" className="hero-reservado">
+                Reservado para objetivos:{' '}
+                {monedasReservado.map((m) => formatMonto(redondear(reservado.get(m)!), m)).join(' y ')} ›
+              </Link>
+            )}
             <div className="hero-acciones">
               {grupos.length > 0 && (
                 <button className="link-discreto" onClick={() => setVerCuentas((v) => !v)} aria-expanded={verCuentas}>
@@ -136,7 +172,8 @@ export default function Home() {
               <p className="nota">
                 Es la suma de tus bancos, billeteras y efectivo: saldo inicial, más ingresos, menos gastos, menos lo
                 invertido, más lo retirado. Los consumos con tarjeta descuentan recién cuando pagás el resumen, y la plata
-                en brokers va aparte.
+                en brokers va aparte. Lo que destinaste a tus objetivos (apartado o en cuentas destinadas) no cuenta como
+                disponible.
               </p>
             )}
             {verCuentas && (
@@ -185,6 +222,46 @@ export default function Home() {
           </>
         )}
       </section>
+
+      {faltaCierre && (
+        <div className="aviso-cierre">
+          <Link to={`/cierre?mes=${mesAnterior}`}>
+            <strong>Cerrá {nombreMes(mesAnterior).split(' ')[0].toLowerCase()}</strong>
+            <span className="muted chico">Cotizaciones e inversiones al fin de mes, y tu resumen en dólares.</span>
+          </Link>
+          <button
+            className="icono-quitar"
+            aria-label="Ocultar"
+            onClick={() => {
+              try {
+                localStorage.setItem('cierre_oculto', mesAnterior)
+              } catch {
+                /* nada */
+              }
+              setCierreOculto(true)
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {objetivosVigentes.length > 0 && (
+        <section className="bloque objetivos-resumen" aria-labelledby="objetivos-titulo">
+          <div className="titulo-con-accion">
+            <h2 id="objetivos-titulo">Tus objetivos</h2>
+            <Link to="/objetivos" className="link-discreto">
+              Ver todos
+            </Link>
+          </div>
+          {objetivosVigentes.slice(0, 3).map((o) => {
+            const progreso = calcularProgreso(o, obj.vinculos, obj.aportes, obj.ctx)
+            return (
+              <TarjetaObjetivo key={o.id} obj={o} progreso={progreso} plan={calcularPlan(o, progreso, obj.aportes, obj.cierres)} compacta />
+            )
+          })}
+        </section>
+      )}
 
       {error && <p className="error">No se pudieron cargar los datos: {error}</p>}
       {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}

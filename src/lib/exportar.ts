@@ -15,6 +15,13 @@ const TABLAS = [
   'divisiones',
   'liquidaciones',
   'notificaciones',
+  'objetivos',
+  'objetivo_vinculos',
+  'objetivo_aportes',
+  'cierres',
+  'cierre_tipos',
+  'cierre_precios',
+  'cierre_objetivos',
 ] as const
 
 type Fila = Record<string, unknown>

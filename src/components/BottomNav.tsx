@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { Target } from 'lucide-react'
 import { useNoLeidas } from '../lib/push'
 
 export default function BottomNav() {
@@ -21,20 +22,16 @@ export default function BottomNav() {
           <Icono d="M4 6h16M4 12h16M4 18h10" />
           Movimientos
         </NavLink>
+        <NavLink to="/objetivos">
+          <Target size={22} strokeWidth={1.8} aria-hidden="true" />
+          Objetivos
+        </NavLink>
         <NavLink to="/grupos" aria-label={sinLeer ? `Grupos, ${sinLeer} sin leer` : undefined}>
           <span className="nav-icono">
             <Icono d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
             {sinLeer > 0 && <span className="nav-badge">{sinLeer > 9 ? '9+' : sinLeer}</span>}
           </span>
           Grupos
-        </NavLink>
-        <NavLink to="/inversiones">
-          <Icono d="M3 17l6-6 4 4 8-8M15 7h6v6" />
-          Inversiones
-        </NavLink>
-        <NavLink to="/ajustes">
-          <Icono d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-          Ajustes
         </NavLink>
       </nav>
     </>

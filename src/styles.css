@@ -165,7 +165,7 @@ button.google {
 
 .bottomnav {
   position: fixed; left: 0; right: 0; bottom: 0;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   background: var(--surface); border-top: 1px solid var(--border);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   z-index: 10;
@@ -589,3 +589,91 @@ button.secundario { background: var(--surface-2); }
   background: none; border: 1px solid transparent; border-radius: 14px; color: var(--muted); font-size: 0.72rem;
 }
 .opcion-icono.elegido { border-color: var(--accent); background: var(--accent-suave); color: var(--text); }
+
+/* Menú lateral ☰ */
+.topbar-izq { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.topbar-izq h1 { margin: 0; }
+.menu-fondo { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / 0.55); animation: aparecer .15s ease-out; }
+.menu-lateral {
+  position: absolute; top: 0; left: 0; bottom: 0; width: min(300px, 84vw); background: var(--surface);
+  border-right: 1px solid var(--border); padding: calc(16px + env(safe-area-inset-top)) 12px 16px;
+  display: flex; flex-direction: column; gap: 2px; animation: deslizar .2s ease-out; overflow-y: auto;
+}
+.menu-cabecera { display: flex; justify-content: space-between; align-items: center; padding: 0 6px 12px; }
+.menu-marca { font-weight: 800; font-size: 1.3rem; color: var(--accent); letter-spacing: -0.02em; }
+.menu-enlace {
+  display: flex; align-items: center; gap: 14px; padding: 13px 12px; border-radius: 12px; color: var(--text);
+  text-decoration: none; font-size: 1rem; background: none; border: 0; text-align: left; width: 100%;
+}
+.menu-enlace.active { background: var(--accent-suave); color: var(--accent); font-weight: 600; }
+.menu-lateral hr { border: 0; border-top: 1px solid var(--border); margin: 10px 4px; width: auto; }
+.menu-aviso { padding: 0 12px; }
+@keyframes deslizar { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .menu-fondo, .menu-lateral { animation: none; } }
+
+/* Objetivos */
+.lista-objetivos { display: grid; gap: 12px; }
+.objetivo { display: grid; gap: 10px; color: inherit; text-decoration: none; }
+.objetivo.compacta { padding: 12px 0; }
+.objetivo.compacta + .objetivo.compacta { border-top: 1px solid var(--border); }
+.objetivo.pausado { opacity: 0.7; }
+.objetivo-cabecera { display: flex; align-items: center; gap: 12px; }
+.objetivo-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.objetivo-nombre { font-weight: 700; }
+.objetivo-porcentaje { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.objetivo-pista { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.objetivo-pista.grande { height: 12px; width: 100%; }
+.objetivo-barra { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); min-width: 4px; }
+.objetivo-plan { color: var(--muted); }
+.objetivo-plan.atrasado { color: var(--error); }
+.objetivo-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; margin-bottom: 18px; }
+.objetivo-hero .icono-cat { width: 64px; height: 64px; border-radius: 20px; }
+.objetivo-hero .icono-cat svg { width: 30px; height: 30px; }
+.objetivo-hero h1 { margin: 4px 0 0; }
+.objetivo-hero p { margin: 0; }
+.objetivo-cifra strong { font-size: 2rem; letter-spacing: -0.02em; }
+.objetivo-plan-grande { font-weight: 600; color: var(--accent); }
+.subpagina-fila { display: flex; justify-content: space-between; align-items: center; }
+.fila.fuente { justify-content: flex-start; }
+.fuente-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.icono-cat.chico-icono { width: 36px; height: 36px; border-radius: 11px; }
+.icono-cat.grande { width: 60px; height: 60px; border-radius: 18px; }
+.icono-quitar { background: none; border: 0; color: var(--muted); padding: 6px; display: grid; place-items: center; }
+.acciones-objetivo, .acciones-finales { display: grid; gap: 10px; }
+.acciones-finales { margin-top: 16px; }
+.monto-y-moneda { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; align-items: end; }
+.nombre-con-icono { display: flex; gap: 12px; align-items: flex-end; }
+.nombre-con-icono label { flex: 1; }
+.cumplidos { margin-top: 16px; display: grid; gap: 10px; }
+.hoja.formulario { overflow-y: auto; }
+a.boton-icono { text-decoration: none; }
+.hero-reservado { display: inline-block; margin-top: 6px; color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+.aviso-cierre {
+  display: flex; align-items: center; gap: 8px; margin: 14px 0; padding: 14px 14px 14px 16px; border-radius: var(--radius);
+  background: var(--accent-suave); border: 1px solid rgb(0 212 166 / 0.25);
+}
+.aviso-cierre a { flex: 1; display: flex; flex-direction: column; gap: 2px; color: var(--text); text-decoration: none; }
+.aviso-cierre strong { color: var(--accent); }
+.objetivos-resumen { margin-top: 18px; }
+
+/* Cierre de mes */
+.precio-fila { justify-content: flex-start; gap: 10px; }
+.precio-fila > span:first-child { min-width: 70px; }
+.precio-input { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; }
+.precio-input input { width: 100%; max-width: 150px; text-align: right; font-variant-numeric: tabular-nums; padding: 10px 12px; }
+.etiqueta-auto {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent);
+  background: var(--accent-suave); border-radius: 6px; padding: 2px 6px; margin-left: 6px;
+}
+.inversion-cierre { padding: 4px 0 8px; }
+.inversion-cierre .fila { padding-bottom: 4px; }
+.inversion-cierre p { margin: 0; }
+.totales + .totales { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.positivo { color: var(--accent); }
+.girando { animation: girar 0.9s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.inversion-cierre .fila { flex-wrap: wrap; row-gap: 8px; }
+.inversion-cierre .fila > div { flex: 1 1 100%; }
+.inversion-cierre .precio-input { flex: 1 1 100%; justify-content: flex-start; }
+.inversion-cierre .precio-input input { max-width: none; flex: 1; text-align: left; }

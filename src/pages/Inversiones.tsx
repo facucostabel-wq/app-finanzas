@@ -1,4 +1,5 @@
 import BottomNav from '../components/BottomNav'
+import BotonMenu from '../components/BotonMenu'
 import { useActivos, useCategorias, useInversiones } from '../lib/datos'
 import { formatCantidad, formatMonto, formatPrecio } from '../lib/format'
 import { calcularTenencias } from '../lib/tenencias'
@@ -26,7 +27,10 @@ export default function Inversiones() {
   return (
     <main className="screen con-nav">
       <header className="topbar">
-        <h1>Inversiones</h1>
+        <div className="topbar-izq">
+          <BotonMenu />
+          <h1>Inversiones</h1>
+        </div>
       </header>
       <p className="muted chico">
         Tenencia y precio promedio de compra (PPP) por activo, calculados con las cantidades que cargaste. Las ventas

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
+import BotonMenu from '../components/BotonMenu'
 import Combobox from '../components/Combobox'
 import MiCuenta from '../components/MiCuenta'
 import IconoCategoria from '../components/IconoCategoria'
@@ -117,7 +118,10 @@ export default function Ajustes() {
     return (
       <main className="screen con-nav">
         <header className="topbar">
-          <h1>Ajustes</h1>
+          <div className="topbar-izq">
+            <BotonMenu />
+            <h1>Ajustes</h1>
+          </div>
         </header>
         {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
         <nav className="menu card" aria-label="Secciones de ajustes">
@@ -308,7 +312,9 @@ export default function Ajustes() {
         </p>
         {eligiendo && (
           <SelectorIcono
-            categoria={eligiendo}
+            nombre={eligiendo.nombre}
+            tipo={eligiendo.tipo}
+            actual={eligiendo.icono}
             onElegir={(icono) => {
               actualizar(eligiendo, { icono })
               setEligiendo(null)

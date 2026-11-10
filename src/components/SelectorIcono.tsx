@@ -1,15 +1,18 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
-import type { Categoria } from '../lib/datos'
 import IconoCategoria, { ICONOS, iconoPara } from './IconoCategoria'
 
-/** Hoja para elegir el ícono de una categoría. */
+/** Hoja para elegir un ícono (de una categoría o de un objetivo). */
 export default function SelectorIcono({
-  categoria,
+  nombre,
+  tipo,
+  actual,
   onElegir,
   onCerrar,
 }: {
-  categoria: Categoria
+  nombre: string
+  tipo?: string
+  actual: string | null
   onElegir: (icono: string | null) => void
   onCerrar: () => void
 }) {
@@ -19,21 +22,21 @@ export default function SelectorIcono({
     return () => window.removeEventListener('keydown', tecla)
   }, [onCerrar])
 
-  const Auto = iconoPara(categoria.nombre, categoria.tipo)
+  const Auto = iconoPara(nombre, tipo)
   return (
     <div className="hoja-fondo" onClick={onCerrar}>
       <div className="hoja" role="dialog" aria-modal="true" aria-labelledby="sel-icono-titulo" onClick={(e) => e.stopPropagation()}>
         <div className="hoja-cabecera">
-          <h2 id="sel-icono-titulo">Ícono de {categoria.nombre}</h2>
+          <h2 id="sel-icono-titulo">Ícono de {nombre || 'tu objetivo'}</h2>
           <button className="boton-icono" onClick={onCerrar} aria-label="Cerrar">
             <X size={20} />
           </button>
         </div>
         <div className="grilla-iconos">
           <button
-            className={`opcion-icono ${!categoria.icono ? 'elegido' : ''}`}
+            className={`opcion-icono ${!actual ? 'elegido' : ''}`}
             onClick={() => onElegir(null)}
-            aria-pressed={!categoria.icono}
+            aria-pressed={!actual}
           >
             <span className="icono-cat">
               <Auto size={21} strokeWidth={1.9} />
@@ -43,9 +46,9 @@ export default function SelectorIcono({
           {Object.entries(ICONOS).map(([clave, { nombre }]) => (
             <button
               key={clave}
-              className={`opcion-icono ${categoria.icono === clave ? 'elegido' : ''}`}
+              className={`opcion-icono ${actual === clave ? 'elegido' : ''}`}
               onClick={() => onElegir(clave)}
-              aria-pressed={categoria.icono === clave}
+              aria-pressed={actual === clave}
             >
               <IconoCategoria icono={clave} />
               <span>{nombre}</span>
