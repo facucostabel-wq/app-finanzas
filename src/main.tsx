@@ -5,7 +5,7 @@ import App from './App'
 import { AuthProvider } from './lib/auth'
 import { MesProvider } from './lib/mes'
 import { PerfilProvider } from './lib/perfil'
-import '@fontsource-variable/geist'
+import '@fontsource-variable/plus-jakarta-sans'
 import './styles.css'
 
 createRoot(document.getElementById('root')!).render(

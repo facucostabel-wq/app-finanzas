@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import IconoCategoria from '../components/IconoCategoria'
 import BottomNav from '../components/BottomNav'
 import {
   esCuentaDisponible,
@@ -276,7 +277,9 @@ export default function Home() {
               <ul className="categorias">
                 {visibles.map((c) => (
                   <li key={c.id}>
-                    <Link to={`/movimientos?categoria=${c.id}`} className="categoria-link" aria-label={`Ver los gastos de ${c.nombre}`}>
+                    <Link to={`/movimientos?categoria=${c.id}`} className="categoria-link con-icono" aria-label={`Ver los gastos de ${c.nombre}`}>
+                      <IconoCategoria nombre={c.nombre} tipo="gasto" />
+                      <div className="categoria-cuerpo">
                       <div className="categoria-fila">
                         <span>
                           {c.nombre} <span className="categoria-flecha" aria-hidden="true">›</span>
@@ -285,6 +288,7 @@ export default function Home() {
                       </div>
                       <div className="categoria-pista" aria-hidden="true">
                         <div className="categoria-barra" style={{ width: `${maximo ? (c.total / maximo) * 100 : 0}%` }} />
+                      </div>
                       </div>
                     </Link>
                   </li>

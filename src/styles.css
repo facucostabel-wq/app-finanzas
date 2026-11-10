@@ -1,45 +1,32 @@
 :root {
-  /* Paleta: grafito azulado + verde de "plata disponible". */
-  --bg: #f4f6f7;
-  --surface: #ffffff;
-  --text: #15191d;
-  --muted: #5e6a74;
-  --border: #e2e6e9;
-  --accent: #0e7c66;
-  --accent-suave: #d7efe8;
-  --accent-text: #ffffff;
-  --error: #c2412d;
-  --info: #0f5f8a;
-  --radius: 16px;
-  font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-feature-settings: 'ss01', 'cv11';
+  /* Tema oscuro: fondo casi negro, tarjetas grafito y verde menta como acento. */
+  --bg: #0b0f14;
+  --surface: #151a21;
+  --surface-2: #1a1f26;
+  --text: #e8ecef;
+  --muted: #8b98a7;
+  --border: #232a33;
+  --accent: #00d4a6;
+  --accent-2: #00796b;
+  --accent-suave: rgb(0 212 166 / 0.12);
+  --accent-text: #04201a;
+  --error: #ff7a6b;
+  --info: #6cc4f0;
+  --radius: 18px;
+  color-scheme: dark;
+  font-family: 'Plus Jakarta Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14191f;
-    --surface: #1c232b;
-    --text: #eef1f3;
-    --muted: #8d98a3;
-    --border: #2a333d;
-    --accent: #3cc2a0;
-    --accent-suave: #1f3b37;
-    --accent-text: #0c1513;
-    --error: #f07a6a;
-    --info: #7cc4ef;
-  }
-}
-
 * { box-sizing: border-box; }
 body { margin: 0; }
 input, button, select, textarea { font-family: inherit; }
-h1, h2 { font-weight: 600; letter-spacing: -0.01em; }
+h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 h1, h2 { margin: 0 0 8px; line-height: 1.2; }
-h1 { font-size: 1.6rem; }
+h1 { font-size: 1.9rem; }
 h2 { font-size: 1.15rem; }
 p { margin: 0 0 12px; line-height: 1.45; }
 a { color: var(--accent); }
@@ -457,7 +444,7 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .nav-icono { position: relative; display: inline-flex; }
 .nav-badge {
   position: absolute; top: -5px; right: -9px; min-width: 17px; height: 17px; padding: 0 4px;
-  border-radius: 99px; background: #d93a3a; color: #fff; font-size: 0.68rem; font-weight: 700;
+  border-radius: 99px; background: #ff5a5a; color: #fff; font-size: 0.68rem; font-weight: 700;
   display: grid; place-items: center; line-height: 1; border: 2px solid var(--surface);
 }
 .novedades { margin-bottom: 16px; }
@@ -494,3 +481,73 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .zona-peligro h2 { color: var(--error); }
 button.peligro:disabled { opacity: 0.45; }
 .lista-simple { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--muted); }
+
+
+/* ---------- Rediseño oscuro ---------- */
+.card { border-color: var(--border); box-shadow: 0 1px 0 rgb(255 255 255 / 0.02) inset; }
+input, .combo-campo input { background: var(--surface-2); border-color: var(--border); border-radius: 12px; }
+input::placeholder { color: #5f6b78; }
+button.primary, a.primary {
+  background: linear-gradient(180deg, #19e0b4, var(--accent));
+  color: var(--accent-text); border-radius: 14px; font-weight: 700;
+  box-shadow: 0 6px 20px rgb(0 212 166 / 0.18);
+}
+button.secundario, button.peligro { border-radius: 14px; }
+button.secundario { background: var(--surface-2); }
+.segmentado { background: var(--surface-2); border-radius: 12px; }
+.segmentado button[aria-pressed='true'] { background: var(--accent-suave); color: var(--accent); box-shadow: none; }
+.chip { background: var(--surface-2); }
+.chip[aria-pressed='true'] { color: var(--accent-text); }
+.combo-lista, .hoja, .tutorial { background: var(--surface-2); }
+.hoja-fondo, .tutorial-fondo { background: rgb(0 0 0 / 0.6); }
+
+/* Barra de abajo con indicador del activo */
+.bottomnav { background: rgb(15 19 25 / 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top-color: var(--border); }
+.bottomnav a { position: relative; padding-top: 10px; }
+.bottomnav a.active::before {
+  content: ''; position: absolute; top: -6px; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px;
+  background: var(--accent); box-shadow: 0 0 12px rgb(0 212 166 / 0.6);
+}
+.fab {
+  background: linear-gradient(180deg, #19e0b4, var(--accent)); color: var(--accent-text);
+  box-shadow: 0 8px 26px rgb(0 212 166 / 0.35);
+}
+
+/* Selector de mes: flechas en caja + mes con calendario */
+.selector-mes { gap: 10px; margin: 6px 0 16px; }
+.selector-mes button {
+  width: 48px; height: 46px; border-radius: 14px; background: var(--surface); border-color: var(--border);
+  display: grid; place-items: center;
+}
+.selector-mes .mes-actual {
+  flex: 1; height: 46px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; font-size: 1rem;
+}
+.selector-mes .mes-actual svg { color: var(--accent); }
+
+/* Botón cuadrado con ícono (filtro) */
+.boton-icono {
+  width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); display: grid; place-items: center; position: relative;
+}
+.boton-icono.activo { color: var(--accent); border-color: rgb(0 212 166 / 0.5); background: var(--accent-suave); }
+.boton-icono .punto { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 99px; background: var(--accent); }
+
+/* Filas de movimientos con ícono de categoría */
+.dia-titulo { font-size: 0.95rem; font-weight: 600; color: var(--muted); margin: 18px 4px 8px; }
+.fila-mov { justify-content: flex-start; gap: 14px; padding: 14px 0; }
+.fila-mov .mov-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fila-mov .mov-titulo { font-weight: 600; }
+.fila-mov .mov-detalle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fila-mov .monto { font-size: 1.02rem; font-weight: 700; }
+.icono-cat {
+  width: 44px; height: 44px; border-radius: 14px; flex: none; display: grid; place-items: center;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--accent);
+}
+.icono-cat.ingreso { background: var(--accent-suave); border-color: transparent; }
+.icono-cat.neutro { color: var(--muted); }
+.monto.gasto { color: var(--text); }
+.bottomnav { background: #0d1117; }
+.categoria-link.con-icono { display: flex; align-items: center; gap: 12px; }
+.categoria-link.con-icono .icono-cat { width: 38px; height: 38px; border-radius: 12px; }
+.categoria-cuerpo { flex: 1; min-width: 0; }

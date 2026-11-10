@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import Combobox, { type Opcion } from '../components/Combobox'
+import IconoCategoria from '../components/IconoCategoria'
+import { Funnel } from 'lucide-react'
 import { TEXTO_FORMA_PAGO, TEXTO_TIPO, TEXTO_TIPO_CUENTA, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
 import { supabase } from '../lib/supabase'
 import { formatCantidad, formatMonto, formatPrecio, nombreDia, nombreMes } from '../lib/format'
@@ -71,6 +73,13 @@ export default function Movimientos() {
     totales.set(m.moneda, t)
   }
 
+  const tituloMov = (m: Movimiento) =>
+    m.categoria_id
+      ? (nombres.get(m.categoria_id) ?? '—')
+      : cuenta.get(m.cuenta_destino_id ?? '')?.tipo === 'tarjeta'
+        ? 'Pago de tarjeta'
+        : 'Transferencia'
+
   // Agrupa por día (ya vienen ordenados del más reciente al más viejo).
   const dias: { fecha: string; items: Movimiento[] }[] = []
   for (const m of filtrados) {
@@ -85,11 +94,13 @@ export default function Movimientos() {
         <h1>Movimientos</h1>
         <button
           type="button"
-          className={`link-discreto ${hayFiltro ? 'filtro-activo' : ''}`}
+          className={`boton-icono ${hayFiltro || verFiltros ? 'activo' : ''}`}
           onClick={() => setVerFiltros((v) => !v)}
           aria-expanded={verFiltros}
+          aria-label={hayFiltro ? 'Filtros (hay un filtro activo)' : 'Filtrar'}
         >
-          {hayFiltro ? 'Filtrado' : 'Filtrar'}
+          <Funnel size={20} strokeWidth={1.9} />
+          {hayFiltro && <span className="punto" aria-hidden="true" />}
         </button>
       </header>
       <SelectorMes />
@@ -132,17 +143,14 @@ export default function Movimientos() {
             <ul className="lista card">
               {d.items.map((m) => (
                 <li key={m.id}>
-                  <Link to={`/movimiento/${m.id}`} className="fila">
-                    <div>
-                      <div>
-                        {m.categoria_id
-                          ? (nombres.get(m.categoria_id) ?? '—')
-                          : cuenta.get(m.cuenta_destino_id ?? '')?.tipo === 'tarjeta'
-                            ? 'Pago de tarjeta'
-                            : 'Transferencia'}
+                  <Link to={`/movimiento/${m.id}`} className="fila fila-mov">
+                    <IconoCategoria nombre={tituloMov(m)} tipo={m.tipo} />
+                    <div className="mov-texto">
+                      <div className="mov-titulo">
+                        {tituloMov(m)}
                         {m.activo_id && <span className="muted"> · {nombresActivo.get(m.activo_id)}</span>}
                       </div>
-                      <div className="muted chico">
+                      <div className="muted chico mov-detalle">
                         {m.tipo === 'transferencia'
                           ? `${cuenta.get(m.cuenta_id) ? nombreCuenta(cuenta.get(m.cuenta_id)!) : '—'} → ${cuenta.get(m.cuenta_destino_id ?? '') ? nombreCuenta(cuenta.get(m.cuenta_destino_id!)!) : '—'}`
                           : ((cuenta.get(m.cuenta_id) && nombreCuenta(cuenta.get(m.cuenta_id)!)) ??
