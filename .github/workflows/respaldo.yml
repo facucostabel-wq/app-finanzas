@@ -28,13 +28,18 @@ jobs:
       CLAVE: ${{ secrets.RESPALDO_CLAVE }}
     steps:
       - name: Verificar secretos
+        id: secretos
         run: |
+          # Mientras no estén cargados, el respaldo se saltea sin marcar error.
           if [ -z "$DB_URL" ] || [ -z "$CLAVE" ]; then
-            echo "::error::Faltan los secretos SUPABASE_DB_URL o RESPALDO_CLAVE"
-            exit 1
+            echo "::notice::Respaldo pendiente: faltan los secretos SUPABASE_DB_URL y RESPALDO_CLAVE"
+            echo "listo=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "listo=si" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Instalar pg_dump 17
+        if: steps.secretos.outputs.listo == 'si'
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
@@ -43,6 +48,7 @@ jobs:
           sudo apt-get install -y -qq postgresql-client-17
 
       - name: Volcar y cifrar
+        if: steps.secretos.outputs.listo == 'si'
         run: |
           set -euo pipefail
           PG=/usr/lib/postgresql/17/bin
@@ -62,6 +68,7 @@ jobs:
           ls -la "$F.tar.gz.gpg"
 
       - name: Guardar el respaldo cifrado
+        if: steps.secretos.outputs.listo == 'si'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARCHIVO }}
