@@ -8,7 +8,8 @@ import { textoPlan } from '../components/TarjetaObjetivo'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, parseMonto } from '../lib/format'
-import { calcularPlan, calcularProgreso } from '../lib/objetivos'
+import { calcularPlan, calcularProgreso, estaDestinada } from '../lib/objetivos'
+import { nombreCortoMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 import InputNumero from '../components/InputNumero'
@@ -51,7 +52,8 @@ export default function ObjetivoDetalle() {
   const plan = calcularPlan(obj, progreso, aportes, cierres)
   const misAportes = aportes.filter((a) => a.objetivo_id === obj.id).slice().reverse()
   const cuentaPorId = new Map(ctx.cuentas.map((c) => [c.id, c]))
-  const vinculadas = new Set(vinculos.map((v) => v.cuenta_id).filter(Boolean))
+  // Cuentas destinadas enteras (no se puede apartar de ellas).
+  const vinculadas = new Set(vinculos.filter((v) => v.cuenta_id && !v.moneda).map((v) => v.cuenta_id))
   const activosVinculados = new Set(vinculos.map((v) => v.activo_id).filter(Boolean))
   const falta = Math.max(0, obj.monto - progreso.total)
   const vigente = obj.estado !== 'cumplido'
@@ -67,8 +69,24 @@ export default function ObjetivoDetalle() {
   const conTenencia = new Set(ctx.tenencias.filter((t) => t.cantidad > 0).map((t) => t.activo_id))
   const opcionesVinculo: Opcion[] = [
     ...ctx.cuentas
-      .filter((c) => c.activa && !['tarjeta', 'grupo'].includes(c.tipo) && !vinculadas.has(c.id))
-      .map((c) => ({ valor: `c:${c.id}`, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo], grupo: 'Una cuenta' })),
+      .filter((c) => c.activa && !['tarjeta', 'grupo'].includes(c.tipo))
+      .flatMap((c) => {
+        // Una cuenta con varias monedas se puede destinar entera o de a una moneda.
+        const monedas = [...new Set(ctx.saldos.filter((x) => x.cuenta_id === c.id && x.monto > 0.005).map((x) => x.moneda))].sort()
+        const opciones: Opcion[] = []
+        if (!estaDestinada(vinculos, c.id))
+          opciones.push({
+            valor: `c:${c.id}`,
+            texto: nombreCuenta(c),
+            detalle: monedas.length > 1 ? 'Todas las monedas' : TEXTO_TIPO_CUENTA[c.tipo],
+            grupo: 'Una cuenta',
+          })
+        if (monedas.length > 1)
+          for (const m of monedas)
+            if (!estaDestinada(vinculos, c.id, m))
+              opciones.push({ valor: `c:${c.id}|${m}`, texto: `${nombreCuenta(c)} · ${nombreCortoMoneda(m)}`, detalle: m, grupo: 'Una cuenta' })
+        return opciones
+      }),
     ...ctx.activos
       .filter((a) => !activosVinculados.has(a.id) && (conTenencia.has(a.id) || a.divisa))
       .map((a) => ({ valor: `a:${a.id}`, texto: a.nombre, detalle: a.divisa ? 'Moneda extranjera' : 'Inversión', grupo: 'Una inversión' })),
@@ -104,6 +122,8 @@ export default function ObjetivoDetalle() {
       const monto = parseMonto(montoTexto)
       if (!monto || monto <= 0) return 'Poné un monto.'
       if (signo === 1 && !cuentaId) return 'Elegí de qué cuenta sale.'
+      if (signo === 1 && cuentaId && estaDestinada(vinculos, cuentaId, moneda))
+        return `Los ${nombreCortoMoneda(moneda).toLowerCase()} de esa cuenta ya están destinados a un objetivo.`
       const { error } = await supabase.from('objetivo_aportes').insert({
         objetivo_id: obj.id,
         monto: signo * monto,
@@ -118,7 +138,8 @@ export default function ObjetivoDetalle() {
   const guardarVinculo = () =>
     ejecutar(async () => {
       if (!vinculo) return 'Elegí una cuenta o inversión.'
-      const fila = vinculo.startsWith('c:') ? { cuenta_id: vinculo.slice(2) } : { activo_id: vinculo.slice(2) }
+      const [id, monedaV] = vinculo.slice(2).split('|')
+      const fila = vinculo.startsWith('c:') ? { cuenta_id: id, ...(monedaV ? { moneda: monedaV } : {}) } : { activo_id: id }
       const { error } = await supabase.from('objetivo_vinculos').insert({ objetivo_id: obj.id, ...fila })
       if (error?.code === '23505') return 'Eso ya está destinado a otro objetivo.'
       return error?.message ?? null

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { convertir, type Cierre, type Tipos } from './cotizaciones'
 import { esCuentaDisponible, type Activo, type Cuenta, type SaldoInicial } from './datos'
 import type { Moneda } from './format'
+import { nombreCortoMoneda } from './monedas'
 import { supabase } from './supabase'
 import type { Tenencia } from './tenencias'
 
@@ -18,7 +19,8 @@ export type Objetivo = {
   cumplido_at: string | null
   creado_at: string
 }
-export type Vinculo = { id: string; objetivo_id: string; cuenta_id: string | null; activo_id: string | null }
+/** moneda: solo esa moneda de la cuenta; null = la cuenta entera. */
+export type Vinculo = { id: string; objetivo_id: string; cuenta_id: string | null; activo_id: string | null; moneda: string | null }
 export type Aporte = {
   id: string
   objetivo_id: string
@@ -39,13 +41,19 @@ export function useObjetivos() {
   const recargar = useCallback(async () => {
     const [o, v, a] = await Promise.all([
       supabase.from('objetivos').select('id, nombre, icono, monto, moneda, fecha, estado, cumplido_at, creado_at').order('creado_at'),
-      supabase.from('objetivo_vinculos').select('id, objetivo_id, cuenta_id, activo_id'),
+      supabase
+        .from('objetivo_vinculos')
+        .select('id, objetivo_id, cuenta_id, activo_id, moneda')
+        .then(async (r) =>
+          // Base sin la columna de moneda todavía: se lee igual (todo como cuenta entera).
+          r.error?.code === '42703' ? await supabase.from('objetivo_vinculos').select('id, objetivo_id, cuenta_id, activo_id') : r,
+        ),
       supabase.from('objetivo_aportes').select('id, objetivo_id, fecha, monto, moneda, cuenta_id, nota').order('fecha'),
     ])
     if (o.error) setError(o.error.message)
     else setError(null)
     setObjetivos(((o.data ?? []) as Objetivo[]).map((x) => ({ ...x, monto: Number(x.monto) })))
-    setVinculos((v.data ?? []) as Vinculo[])
+    setVinculos(((v.data ?? []) as Partial<Vinculo>[]).map((x) => ({ moneda: null, ...x }) as Vinculo))
     setAportes(((a.data ?? []) as Aporte[]).map((x) => ({ ...x, monto: Number(x.monto) })))
     setLoading(false)
   }, [])
@@ -118,12 +126,12 @@ export function calcularProgreso(obj: Objetivo, vinculos: Vinculo[], aportes: Ap
   for (const v of vinculos.filter((x) => x.objetivo_id === obj.id)) {
     if (v.cuenta_id) {
       const cuenta = ctx.cuentas.find((c) => c.id === v.cuenta_id)
-      const sal = ctx.saldos.filter((s) => s.cuenta_id === v.cuenta_id && s.monto > 0.005)
+      const sal = ctx.saldos.filter((s) => s.cuenta_id === v.cuenta_id && s.monto > 0.005 && (!v.moneda || s.moneda === v.moneda))
       const vals = sal.map((s) => conv(s.monto, s.moneda))
       fuentes.push({
         clave: v.id,
         tipo: 'cuenta',
-        nombre: cuenta?.nombre ?? 'Cuenta',
+        nombre: `${cuenta?.nombre ?? 'Cuenta'}${v.moneda ? ` · ${nombreCortoMoneda(v.moneda)}` : ''}`,
         valor: vals.some((x) => x === null) ? null : vals.reduce<number>((s, x) => s + (x ?? 0), 0),
         original: sal.map((s) => ({ monto: s.monto, moneda: s.moneda })),
       })
@@ -222,7 +230,8 @@ export function reservadoEnDisponible(
     if (!vigentes.has(v.objetivo_id) || !v.cuenta_id) continue
     const t = tipo.get(v.cuenta_id)
     if (!t || !esCuentaDisponible(t)) continue
-    for (const s of saldos) if (s.cuenta_id === v.cuenta_id && s.monto > 0) sumar(s.moneda, s.monto)
+    for (const s of saldos)
+      if (s.cuenta_id === v.cuenta_id && s.monto > 0 && (!v.moneda || s.moneda === v.moneda)) sumar(s.moneda, s.monto)
   }
   // Apartados: netos por objetivo y moneda, nunca negativos.
   const neto = new Map<string, number>()
@@ -235,4 +244,9 @@ export function reservadoEnDisponible(
   }
   for (const [k, v] of neto) if (v > 0) sumar(k.split('|')[1], v)
   return res
+}
+
+/** ¿Esa moneda de esa cuenta ya está destinada (entera o por moneda) a algún objetivo? */
+export function estaDestinada(vinculos: Vinculo[], cuentaId: string, moneda?: string | null) {
+  return vinculos.some((v) => v.cuenta_id === cuentaId && (!v.moneda || !moneda || v.moneda === moneda))
 }

@@ -57,3 +57,18 @@ export function buscarMonedas(texto: string) {
   if (!q) return MONEDAS
   return MONEDAS.filter((m) => m.codigo.toLowerCase().includes(q) || sinTildes(m.nombre).includes(q))
 }
+
+const CORTOS: Record<string, string> = {
+  ARS: 'Pesos',
+  USD: 'Dólares',
+  EUR: 'Euros',
+  BRL: 'Reales',
+  UYU: 'Pesos uruguayos',
+  CLP: 'Pesos chilenos',
+  GBP: 'Libras',
+}
+
+/** Nombre corto para subdividir una cuenta: "Pesos", "Dólares"… (o el código). */
+export function nombreCortoMoneda(codigo: string): string {
+  return CORTOS[codigo] ?? codigo
+}

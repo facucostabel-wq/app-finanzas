@@ -22,9 +22,16 @@ import {
 } from '../lib/datos'
 import { formatMonto, mesActual, moverMes, nombreMes, rangoMes, type Moneda } from '../lib/format'
 import { useMes } from '../lib/mes'
+import { nombreCortoMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 
 const redondear = (n: number) => Math.round(n * 100) / 100
+
+function textoSaldo(tipo: string, monto: number, moneda: Moneda) {
+  if ((tipo === 'tarjeta' || tipo === 'grupo') && monto < 0) return `Debés ${formatMonto(redondear(-monto), moneda)}`
+  if (tipo === 'grupo') return `Te deben ${formatMonto(redondear(monto), moneda)}`
+  return formatMonto(redondear(monto), moneda)
+}
 
 export default function Home() {
   const { perfil } = usePerfil()
@@ -183,30 +190,48 @@ export default function Home() {
                     <h3>{g.titulo}</h3>
                     <ul>
                       {g.filas.map(({ cuenta, saldos }) => (
-                        <li key={cuenta.id}>
-                          <Link
-                            to={cuenta.tipo === 'grupo' && cuenta.grupo_id ? `/grupos/${cuenta.grupo_id}` : `/movimientos?cuenta=${cuenta.id}`}
-                            className="cuenta-link"
-                          >
-                            {nombreCuenta(cuenta)} <span aria-hidden="true">›</span>
-                          </Link>
-                          <span className="cuentas-montos">
-                            {saldos.map((x) => (
-                              <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
-                                {(cuenta.tipo === 'tarjeta' || cuenta.tipo === 'grupo') && x.monto < 0
-                                  ? `Debés ${formatMonto(redondear(-x.monto), x.moneda)}`
-                                  : cuenta.tipo === 'grupo'
-                                    ? `Te deben ${formatMonto(redondear(x.monto), x.moneda)}`
-                                    : formatMonto(redondear(x.monto), x.moneda)}
+                        <li key={cuenta.id} className={saldos.length > 1 ? 'cuenta-multi' : ''}>
+                          <div className="cuenta-renglon">
+                            <Link
+                              to={cuenta.tipo === 'grupo' && cuenta.grupo_id ? `/grupos/${cuenta.grupo_id}` : `/movimientos?cuenta=${cuenta.id}`}
+                              className="cuenta-link"
+                            >
+                              {nombreCuenta(cuenta)} <span aria-hidden="true">›</span>
+                            </Link>
+                            {saldos.length <= 1 && (
+                              <span className="cuentas-montos">
+                                {saldos.map((x) => (
+                                  <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
+                                    {textoSaldo(cuenta.tipo, x.monto, x.moneda)}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                          </div>
+                          {/* Una cuenta con varias monedas se abre en una fila por moneda. */}
+                          {saldos.length > 1 &&
+                            saldos.map((x) => (
+                              <Link
+                                key={x.moneda}
+                                to={
+                                  cuenta.tipo === 'grupo' && cuenta.grupo_id
+                                    ? `/grupos/${cuenta.grupo_id}`
+                                    : `/movimientos?cuenta=${cuenta.id}&moneda=${x.moneda}`
+                                }
+                                className="cuenta-sub"
+                              >
+                                <span>{nombreCortoMoneda(x.moneda)}</span>
+                                <span className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
+                                  {textoSaldo(cuenta.tipo, x.monto, x.moneda)}
+                                </span>
+                              </Link>
+                            ))}
+                          {cuenta.tipo === 'tarjeta' &&
+                            futurasDe(cuenta.id).map((f) => (
+                              <span key={`f-${f.moneda}`} className="muted chico cuenta-cuotas">
+                                y {formatMonto(redondear(f.monto), f.moneda)} en cuotas a vencer
                               </span>
                             ))}
-                            {cuenta.tipo === 'tarjeta' &&
-                              futurasDe(cuenta.id).map((f) => (
-                                <span key={`f-${f.moneda}`} className="muted chico">
-                                  y {formatMonto(redondear(f.monto), f.moneda)} en cuotas a vencer
-                                </span>
-                              ))}
-                          </span>
                         </li>
                       ))}
                     </ul>

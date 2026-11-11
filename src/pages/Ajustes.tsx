@@ -18,7 +18,7 @@ import {
   type TipoCategoria,
 } from '../lib/datos'
 import { formatMonto, hoyISO, mesActual } from '../lib/format'
-import { MONEDAS, nombreMoneda } from '../lib/monedas'
+import { nombreCortoMoneda, MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 
@@ -47,7 +47,7 @@ export default function Ajustes() {
   const saldosDe = (cuentaId: string) =>
     saldos
       .filter((x) => x.cuenta_id === cuentaId && Math.abs(x.monto) >= 0.01)
-      .map((x) => formatMonto(Math.round(x.monto * 100) / 100, x.moneda))
+      .map((x) => ({ moneda: x.moneda, texto: formatMonto(Math.round(x.monto * 100) / 100, x.moneda) }))
 
   useEffect(() => {
     setFechaSaldo(perfil?.saldo_inicial_fecha ?? '')
@@ -178,12 +178,22 @@ export default function Ajustes() {
                       {!c.activa && ' (oculta)'}
                     </div>
                   </div>
-                  <div className="cuenta-saldos chico">
+                  {montos.length === 1 && (
+                    <div className="cuenta-saldos chico">
+                      <span>{montos[0].texto}</span>
+                    </div>
+                  )}
+                </Link>
+                {montos.length > 1 && (
+                  <div className="cuenta-subs">
                     {montos.map((m) => (
-                      <span key={m}>{m}</span>
+                      <Link key={m.moneda} to={`/movimientos?cuenta=${c.id}&moneda=${m.moneda}`} className="cuenta-sub">
+                        <span>{nombreCortoMoneda(m.moneda)}</span>
+                        <span>{m.texto}</span>
+                      </Link>
                     ))}
                   </div>
-                </Link>
+                )}
               </li>
             )
           })}

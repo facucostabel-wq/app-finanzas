@@ -5,9 +5,10 @@ import BotonMenu from '../components/BotonMenu'
 import Combobox, { type Opcion } from '../components/Combobox'
 import IconoCategoria from '../components/IconoCategoria'
 import { Funnel } from 'lucide-react'
-import { TEXTO_FORMA_PAGO, TEXTO_TIPO, TEXTO_TIPO_CUENTA, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, type Movimiento } from '../lib/datos'
+import { TEXTO_FORMA_PAGO, TEXTO_TIPO, TEXTO_TIPO_CUENTA, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, useSaldosCuentas, type Movimiento } from '../lib/datos'
 import { supabase } from '../lib/supabase'
-import { formatCantidad, formatMonto, formatPrecio, nombreDia, nombreMes } from '../lib/format'
+import { formatCantidad, formatMonto, formatPrecio, mesActual, nombreDia, nombreMes } from '../lib/format'
+import { nombreCortoMoneda } from '../lib/monedas'
 import { SelectorMes, useMes } from '../lib/mes'
 
 const SIGNO: Record<Movimiento['tipo'], string> = { gasto: '−', ingreso: '+', aporte: '→', rescate: '←', transferencia: '⇄' }
@@ -20,6 +21,7 @@ export default function Movimientos() {
   const iconos = new Map(categorias.map((c) => [c.id, c.icono]))
   const { activos } = useActivos()
   const { cuentas } = useCuentas()
+  const { saldos: saldosHoy } = useSaldosCuentas(mesActual())
   const cuenta = new Map(cuentas.map((c) => [c.id, c]))
   // Total de cuotas de cada compra, para mostrar "cuota 2 de 6".
   const [totalCuotas, setTotalCuotas] = useState<Map<string, number>>(new Map())
@@ -35,10 +37,18 @@ export default function Movimientos() {
   const [params, setParams] = useSearchParams()
   const filtroCategoria = params.get('categoria') ?? ''
   const filtroCuenta = params.get('cuenta') ?? ''
+  const filtroMoneda = filtroCuenta ? (params.get('moneda') ?? '') : ''
   const hayFiltro = Boolean(filtroCategoria || filtroCuenta)
   const [verFiltros, setVerFiltros] = useState(hayFiltro)
   function cambiarFiltro(clave: 'categoria' | 'cuenta', valor: string) {
     const nuevos = new URLSearchParams(params)
+    if (clave === 'cuenta') {
+      // "id|USD" = una moneda de la cuenta; "id" = la cuenta entera.
+      const [id, moneda] = valor.split('|')
+      nuevos.delete('moneda')
+      if (moneda) nuevos.set('moneda', moneda)
+      valor = id
+    }
     if (valor) nuevos.set(clave, valor)
     else nuevos.delete(clave)
     setParams(nuevos, { replace: true })
@@ -52,15 +62,36 @@ export default function Movimientos() {
       grupo: c.tipo === 'gasto' ? 'Gastos' : c.tipo === 'ingreso' ? 'Ingresos' : 'Inversiones',
     })),
   ]
+  // Monedas de cada cuenta (por saldo o por movimientos del mes), para filtrar por una sola.
+  const monedasDe = new Map<string, Set<string>>()
+  const sumarMoneda = (id: string | null, m: string) => {
+    if (!id) return
+    if (!monedasDe.has(id)) monedasDe.set(id, new Set())
+    monedasDe.get(id)!.add(m)
+  }
+  for (const x of saldosHoy) if (Math.abs(x.monto) >= 0.01) sumarMoneda(x.cuenta_id, x.moneda)
+  for (const m of movimientos) {
+    sumarMoneda(m.cuenta_id, m.moneda)
+    sumarMoneda(m.cuenta_destino_id, m.moneda)
+  }
   const opcionesCuenta: Opcion[] = [
     { valor: '', texto: 'Todas' },
-    ...cuentas.map((c) => ({ valor: c.id, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo] })),
+    ...cuentas.flatMap((c) => {
+      const monedas = [...(monedasDe.get(c.id) ?? [])].sort()
+      const entera = { valor: c.id, texto: nombreCuenta(c), detalle: monedas.length > 1 ? 'Todas las monedas' : TEXTO_TIPO_CUENTA[c.tipo] }
+      if (monedas.length <= 1) return [entera]
+      return [
+        entera,
+        ...monedas.map((m) => ({ valor: `${c.id}|${m}`, texto: `${nombreCuenta(c)} · ${nombreCortoMoneda(m)}`, detalle: m })),
+      ]
+    }),
   ]
 
   const filtrados = movimientos.filter(
     (m) =>
       (!filtroCategoria || m.categoria_id === filtroCategoria) &&
-      (!filtroCuenta || m.cuenta_id === filtroCuenta || m.cuenta_destino_id === filtroCuenta),
+      (!filtroCuenta || m.cuenta_id === filtroCuenta || m.cuenta_destino_id === filtroCuenta) &&
+      (!filtroMoneda || m.moneda === filtroMoneda),
   )
 
   // Totales de lo filtrado, por moneda: lo que entró y lo que salió.
@@ -113,7 +144,12 @@ export default function Movimientos() {
       {verFiltros && (
         <section className="card filtros">
           <Combobox etiqueta="Categoría" opciones={opcionesCategoria} valor={filtroCategoria} onCambio={(v) => cambiarFiltro('categoria', v)} />
-          <Combobox etiqueta="Cuenta" opciones={opcionesCuenta} valor={filtroCuenta} onCambio={(v) => cambiarFiltro('cuenta', v)} />
+          <Combobox
+            etiqueta="Cuenta"
+            opciones={opcionesCuenta}
+            valor={filtroMoneda ? `${filtroCuenta}|${filtroMoneda}` : filtroCuenta}
+            onCambio={(v) => cambiarFiltro('cuenta', v)}
+          />
           {hayFiltro && (
             <button type="button" className="link" onClick={() => setParams({}, { replace: true })}>
               Quitar filtros
