@@ -3,8 +3,9 @@ import { useAuth } from './auth'
 import type { Moneda } from './format'
 import { supabase } from './supabase'
 
-export type Grupo = { id: string; nombre: string; moneda: Moneda; invitacion_token: string; creado_por: string }
-export type Miembro = { id: string; grupo_id: string; usuario_id: string | null; nombre: string }
+export type Grupo = { id: string; nombre: string; moneda: Moneda; invitacion_token: string; creado_por: string; admin_id?: string | null }
+/** removido_at: ex miembro (sin acceso, pero su historial sigue en el grupo). */
+export type Miembro = { id: string; grupo_id: string; usuario_id: string | null; nombre: string; removido_at?: string | null; unido_at?: string | null }
 export type GastoGrupo = {
   id: string
   grupo_id: string
@@ -77,8 +78,27 @@ export function useGrupo(id: string | undefined) {
   const recargar = useCallback(async () => {
     if (!id) return
     const [g, m, gs, ps, cg] = await Promise.all([
-      supabase.from('grupos').select('id, nombre, moneda, invitacion_token, creado_por').eq('id', id).maybeSingle(),
-      supabase.from('grupo_miembros').select('id, grupo_id, usuario_id, nombre').eq('grupo_id', id).order('creado_at'),
+      // Con las columnas de administración; si la base todavía no las tiene, sin ellas.
+      supabase
+        .from('grupos')
+        .select('id, nombre, moneda, invitacion_token, creado_por, admin_id')
+        .eq('id', id)
+        .maybeSingle()
+        .then(async (r) =>
+          r.error?.code === '42703'
+            ? await supabase.from('grupos').select('id, nombre, moneda, invitacion_token, creado_por').eq('id', id).maybeSingle()
+            : r,
+        ),
+      supabase
+        .from('grupo_miembros')
+        .select('id, grupo_id, usuario_id, nombre, removido_at, unido_at')
+        .eq('grupo_id', id)
+        .order('creado_at')
+        .then(async (r) =>
+          r.error?.code === '42703'
+            ? await supabase.from('grupo_miembros').select('id, grupo_id, usuario_id, nombre').eq('grupo_id', id).order('creado_at')
+            : r,
+        ),
       supabase
         .from('gastos_grupo')
         .select('id, grupo_id, descripcion, fecha, monto, moneda, pagado_por, modo, creado_por')
@@ -125,8 +145,11 @@ export function useGrupo(id: string | undefined) {
     recargar()
   }, [recargar])
 
-  const miMiembro = datos.miembros.find((x) => x.usuario_id === session?.user.id)?.id ?? null
-  return { ...datos, miMiembro, loading, recargar }
+  const miMiembro = datos.miembros.find((x) => x.usuario_id === session?.user.id && !x.removido_at)?.id ?? null
+  // Grupos creados antes de que existiera el admin: lo es quien lo creó.
+  const adminId = datos.grupo ? (datos.grupo.admin_id !== undefined ? datos.grupo.admin_id : datos.grupo.creado_por) : null
+  const esAdmin = Boolean(session?.user.id && adminId === session.user.id)
+  return { ...datos, miMiembro, esAdmin, adminId, loading, recargar }
 }
 
 /**

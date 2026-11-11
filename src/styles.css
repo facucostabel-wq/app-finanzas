@@ -689,3 +689,10 @@ a.boton-icono { text-decoration: none; }
 .cuenta-cuotas { align-self: flex-end; }
 .cuenta-subs { display: grid; gap: 2px; padding: 0 0 10px 4px; }
 .cuenta-subs .cuenta-sub { font-size: 0.9rem; }
+
+/* Administración de grupos */
+.miembro-fila { flex-wrap: wrap; align-items: flex-start; }
+.miembro-acciones { display: flex; gap: 14px; }
+.peligro-texto { color: var(--error) !important; }
+.unir-caja { flex: 1 1 100%; display: grid; gap: 10px; padding: 10px 0 4px; }
+.centrado { text-align: center; }

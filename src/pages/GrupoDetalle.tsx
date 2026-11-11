@@ -39,7 +39,7 @@ const guardarCat = (g: string, c: string) => {
 export default function GrupoDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { grupo, miembros, gastos, divisiones, pagos, vinculos, cuentaGrupo, miMiembro, loading, recargar } = useGrupo(id)
+  const { grupo, miembros, gastos, divisiones, pagos, vinculos, cuentaGrupo, miMiembro, esAdmin, adminId, loading, recargar } = useGrupo(id)
   // Al abrir el grupo, sus avisos quedan como leídos.
   useEffect(() => {
     if (id) marcarLeidas(id)
@@ -52,7 +52,52 @@ export default function GrupoDetalle() {
   const [saldando, setSaldando] = useState<Deuda | null>(null)
   const [verMiembros, setVerMiembros] = useState(false)
 
-  const nombre = (m: string) => (m === miMiembro ? 'Vos' : (miembros.find((x) => x.id === m)?.nombre ?? '—'))
+  const [uniendo, setUniendo] = useState<string | null>(null)
+  const [unirCon, setUnirCon] = useState<string | null>(null)
+  const nombre = (m: string) => {
+    if (m === miMiembro) return 'Vos'
+    const x = miembros.find((y) => y.id === m)
+    return x ? (x.removido_at ? `${x.nombre} (ex)` : x.nombre) : '—'
+  }
+  const activos = miembros.filter((m) => !m.removido_at)
+  const exMiembros = miembros.filter((m) => m.removido_at)
+
+  async function accion(rpc: string, args: Record<string, string>, ok?: () => void) {
+    setError(null)
+    const { error } = await supabase.rpc(rpc, args)
+    if (error) {
+      setError(/function .* does not exist|schema cache/i.test(error.message) ? 'Falta ejecutar el SQL de administración de grupos en Supabase.' : error.message)
+      return
+    }
+    if (ok) ok()
+    else recargar()
+  }
+  function eliminar(m: { id: string; nombre: string }) {
+    if (!window.confirm(`¿Eliminar a ${m.nombre} del grupo? Si ya tiene gastos o pagos, queda como ex miembro: pierde el acceso pero su historial y su saldo siguen.`)) return
+    accion('eliminar_miembro', { p_miembro: m.id })
+  }
+  function unir() {
+    if (!uniendo || !unirCon) return
+    const inv = miembros.find((m) => m.id === uniendo)?.nombre
+    const con = miembros.find((m) => m.id === unirCon)?.nombre
+    if (!window.confirm(`¿${inv} (invitado) y ${con} son la misma persona? Todo lo de ${inv} pasa a ${con}.`)) return
+    accion('unir_invitado', { p_invitado: uniendo, p_miembro: unirCon }, () => {
+      setUniendo(null)
+      setUnirCon(null)
+      recargar()
+    })
+  }
+  function salir() {
+    const extra = esAdmin ? ' Sos el administrador: lo pasa a ser el miembro más antiguo.' : ''
+    if (!window.confirm(`¿Salir de "${grupo?.nombre}"? Si tenés gastos o pagos, quedan en el historial del grupo.${extra}`)) return
+    accion('salir_grupo', { p_grupo: id! }, () => navigate('/grupos', { replace: true }))
+  }
+  function borrarGrupo() {
+    const escrito = window.prompt(`Esto borra el grupo para todos, con sus gastos y pagos. Lo que cada uno registró en sus finanzas personales queda. Para confirmar, escribí el nombre del grupo: ${grupo?.nombre}`)
+    if (escrito === null) return
+    if (escrito.trim().toLowerCase() !== grupo?.nombre.trim().toLowerCase()) return setError('El nombre no coincide: el grupo no se borró.')
+    accion('borrar_grupo', { p_grupo: id! }, () => navigate('/grupos', { replace: true }))
+  }
   const saldos = calcularSaldos(gastos, divisiones, pagos)
   const deudas = simplificarDeudas(saldos)
   const pendientes = calcularPendientes(miMiembro, gastos, divisiones, pagos, vinculos)
@@ -110,7 +155,7 @@ export default function GrupoDetalle() {
       </header>
       <h1>{grupo.nombre}</h1>
       <p className="muted chico">
-        {miembros.length} {miembros.length === 1 ? 'miembro' : 'miembros'} ·{' '}
+        {activos.length} {activos.length === 1 ? 'miembro' : 'miembros'} ·{' '}
         <button className="link-discreto" onClick={() => setVerMiembros((v) => !v)}>
           {verMiembros ? 'ocultar' : 'ver y agregar'}
         </button>
@@ -121,13 +166,51 @@ export default function GrupoDetalle() {
       {verMiembros && (
         <section className="bloque">
           <ul className="lista">
-            {miembros.map((m) => (
-              <li key={m.id} className="fila">
-                <span>{m.id === miMiembro ? `${m.nombre} (vos)` : m.nombre}</span>
-                <span className="muted chico">{m.usuario_id ? 'Con cuenta' : 'Invitado'}</span>
+            {activos.map((m) => (
+              <li key={m.id} className="fila miembro-fila">
+                <div>
+                  <span>{m.id === miMiembro ? `${m.nombre} (vos)` : m.nombre}</span>
+                  {m.usuario_id && m.usuario_id === adminId && <span className="etiqueta-auto">admin</span>}
+                  <div className="muted chico">{m.usuario_id ? 'Con cuenta' : 'Invitado'}</div>
+                </div>
+                {esAdmin && m.id !== miMiembro && (
+                  <div className="miembro-acciones">
+                    {!m.usuario_id && (
+                      <button className="link-discreto" onClick={() => setUniendo(uniendo === m.id ? null : m.id)}>
+                        Unir
+                      </button>
+                    )}
+                    <button className="link-discreto peligro-texto" onClick={() => eliminar(m)}>
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+                {uniendo === m.id && (
+                  <div className="unir-caja">
+                    <p className="chico muted">
+                      Si {m.nombre} entró con su cuenta como otro miembro, elegilo: hereda todo lo cargado como invitado.
+                    </p>
+                    <Combobox
+                      etiqueta="Es la misma persona que"
+                      opciones={activos
+                        .filter((x) => x.usuario_id && x.id !== m.id)
+                        .map((x) => ({ valor: x.id, texto: x.id === miMiembro ? `${x.nombre} (vos)` : x.nombre }))}
+                      valor={unirCon}
+                      onCambio={setUnirCon}
+                    />
+                    <button className="primary" onClick={unir} disabled={!unirCon}>
+                      Unir
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
+          {exMiembros.length > 0 && (
+            <p className="muted chico">
+              Ex miembros (su historial sigue en el grupo): {exMiembros.map((m) => m.nombre).join(', ')}
+            </p>
+          )}
           <div className="agregar" style={{ marginTop: 10 }}>
             <input
               value={invitado}
@@ -270,6 +353,18 @@ export default function GrupoDetalle() {
             ),
           )}
         </ul>
+      </section>
+
+      <section className="acciones-finales">
+        <button className="secundario" onClick={salir}>
+          Salir del grupo
+        </button>
+        {esAdmin && (
+          <button className="peligro" onClick={borrarGrupo}>
+            Borrar el grupo
+          </button>
+        )}
+        {!esAdmin && <p className="muted chico centrado">Solo el administrador puede borrar el grupo o eliminar miembros.</p>}
       </section>
     </main>
   )

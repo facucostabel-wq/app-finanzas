@@ -32,7 +32,7 @@ export default function GastoGrupoForm() {
   const editando = Boolean(gastoId && gastoId !== 'nuevo')
   const navigate = useNavigate()
   const { session } = useAuth()
-  const { grupo, miembros, gastos, divisiones, cuentaGrupo, miMiembro, loading } = useGrupo(grupoId)
+  const { grupo, miembros: todos, gastos, divisiones, cuentaGrupo, miMiembro, loading } = useGrupo(grupoId)
   const { categorias } = useCategorias()
   const { cuentas } = useCuentas()
 
@@ -51,6 +51,12 @@ export default function GastoGrupoForm() {
   const [error, setError] = useState<string | null>(null)
 
   const existente: GastoGrupo | undefined = gastos.find((g) => g.id === gastoId)
+  // Los ex miembros solo aparecen si ya estaban en este gasto.
+  const miembros = todos.filter(
+    (m) =>
+      !m.removido_at ||
+      (existente && (existente.pagado_por === m.id || divisiones.some((d) => d.gasto_id === existente.id && d.miembro_id === m.id))),
+  )
   const puedoEditar = !editando || existente?.creado_por === session?.user.id
 
   // Precarga: valores por defecto (nuevo) o los del gasto (edición).
