@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Tutorial from './components/Tutorial'
 import { sincronizarPush } from './lib/push'
+import { usePilaNavegacion } from './lib/pila'
 import { useAuth } from './lib/auth'
 import { usePerfil } from './lib/perfil'
 import { missingVars, supabase, supabaseMissingConfig, vinoDeRecuperacion } from './lib/supabase'
@@ -40,6 +41,9 @@ export default function App() {
     })
     return () => data.subscription.unsubscribe()
   }, [navigate])
+
+  // Botón atrás del celular: primero al Resumen, después sale de la app.
+  usePilaNavegacion(Boolean(session) && !loading)
 
   // Si este dispositivo tenía avisos activos, quedan a nombre de la cuenta que entró.
   const uid = session?.user.id

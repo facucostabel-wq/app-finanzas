@@ -148,7 +148,7 @@ export default function GastoGrupoForm() {
     setBusy(false)
     if (err) return setError(`El gasto del grupo se guardó, pero no tu parte: ${err}`)
     if (categoria) guardarCat(grupoId, categoria)
-    navigate(`/grupos/${grupoId}`)
+    navigate(-1)
   }
 
   async function borrar() {
@@ -158,7 +158,7 @@ export default function GastoGrupoForm() {
     const { error } = await supabase.from('gastos_grupo').delete().eq('id', gastoId)
     setBusy(false)
     if (error) return setError(error.message)
-    navigate(`/grupos/${grupoId}`)
+    navigate(-1)
   }
 
   if (loading || !listo) return <main className="screen center muted">Cargando…</main>
@@ -168,7 +168,7 @@ export default function GastoGrupoForm() {
   return (
     <main className="screen">
       <header className="topbar">
-        <button className="link" onClick={() => navigate(`/grupos/${grupoId}`)}>
+        <button className="link" onClick={() => navigate(-1)}>
           ← {grupo?.nombre}
         </button>
       </header>

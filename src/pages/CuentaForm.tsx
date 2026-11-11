@@ -124,7 +124,7 @@ export default function CuentaForm() {
           if (error) throw error
         }
       }
-      navigate('/ajustes/cuentas')
+      navigate(-1)
     } catch (err) {
       const e = err as { code?: string; message?: string }
       setError(e.code === '23505' ? 'Ya tenés una cuenta o tarjeta con ese nombre.' : `No se pudo guardar: ${e.message}`)
