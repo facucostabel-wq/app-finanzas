@@ -696,3 +696,13 @@ a.boton-icono { text-decoration: none; }
 .peligro-texto { color: var(--error) !important; }
 .unir-caja { flex: 1 1 100%; display: grid; gap: 10px; padding: 10px 0 4px; }
 .centrado { text-align: center; }
+
+/* Ocultar saldos (ojito) */
+.oculto { letter-spacing: 0.12em; }
+.hero-titulo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.boton-ojo { background: none; border: 0; color: var(--muted); display: grid; place-items: center; padding: 6px; border-radius: 10px; }
+.boton-ojo[aria-pressed='true'] { color: var(--accent); }
+.boton-ojo.boton-icono { border: 1px solid var(--border); background: var(--surface); padding: 0; }
+.topbar-der { display: flex; gap: 8px; align-items: center; }
+.subpagina-fila .ojo-suelto { margin-left: auto; margin-right: 8px; }
+.hero-monto .oculto { font-size: 0.72em; letter-spacing: 0.06em; }

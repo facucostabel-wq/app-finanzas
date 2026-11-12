@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import IconoCategoria from '../components/IconoCategoria'
 import BottomNav from '../components/BottomNav'
+import { BotonOjo, Oculto } from '../lib/ocultar'
 import BotonMenu from '../components/BotonMenu'
 import TarjetaObjetivo from '../components/TarjetaObjetivo'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
@@ -142,27 +143,32 @@ export default function Home() {
 
       {/* 1. Lo más importante: cuánto puedo gastar. */}
       <section className="hero" aria-labelledby="disponible-titulo">
-        <h1 id="disponible-titulo" className="hero-etiqueta">
-          {esMesActual ? 'Disponible para gastar' : `Disponible al cierre de ${nombreDelMes.toLowerCase()}`}
-        </h1>
+        <div className="hero-titulo">
+          <h1 id="disponible-titulo" className="hero-etiqueta">
+            {esMesActual ? 'Disponible para gastar' : `Disponible al cierre de ${nombreDelMes.toLowerCase()}`}
+          </h1>
+          <BotonOjo />
+        </div>
         {errorDisponible ? (
           <p className="muted">Falta ejecutar el SQL del dinero disponible en Supabase.</p>
         ) : (
           <>
             <p className={`hero-monto ${montoPrincipal < 0 ? 'negativo' : ''}`}>
-              {principal ? formatMonto(redondear(montoPrincipal), principal) : '$ 0'}
+              <Oculto>{principal ? formatMonto(redondear(montoPrincipal), principal) : '$ 0'}</Oculto>
             </p>
             {otras.length > 0 && (
               <p className="hero-otras">
                 {otras.map((m) => (
-                  <span key={m}>y {formatMonto(redondear(disponible.get(m)!), m)}</span>
+                  <span key={m}>
+                    y <Oculto>{formatMonto(redondear(disponible.get(m)!), m)}</Oculto>
+                  </span>
                 ))}
               </p>
             )}
             {monedasReservado.length > 0 && (
               <Link to="/objetivos" className="hero-reservado">
                 Reservado para objetivos:{' '}
-                {monedasReservado.map((m) => formatMonto(redondear(reservado.get(m)!), m)).join(' y ')} ›
+                <Oculto>{monedasReservado.map((m) => formatMonto(redondear(reservado.get(m)!), m)).join(' y ')}</Oculto> ›
               </Link>
             )}
             <div className="hero-acciones">
@@ -202,7 +208,7 @@ export default function Home() {
                               <span className="cuentas-montos">
                                 {saldos.map((x) => (
                                   <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
-                                    {textoSaldo(cuenta.tipo, x.monto, x.moneda)}
+                                    <Oculto>{textoSaldo(cuenta.tipo, x.monto, x.moneda)}</Oculto>
                                   </span>
                                 ))}
                               </span>
@@ -222,14 +228,14 @@ export default function Home() {
                               >
                                 <span>{nombreCortoMoneda(x.moneda)}</span>
                                 <span className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
-                                  {textoSaldo(cuenta.tipo, x.monto, x.moneda)}
+                                  <Oculto>{textoSaldo(cuenta.tipo, x.monto, x.moneda)}</Oculto>
                                 </span>
                               </Link>
                             ))}
                           {cuenta.tipo === 'tarjeta' &&
                             futurasDe(cuenta.id).map((f) => (
                               <span key={`f-${f.moneda}`} className="muted chico cuenta-cuotas">
-                                y {formatMonto(redondear(f.monto), f.moneda)} en cuotas a vencer
+                                y <Oculto>{formatMonto(redondear(f.monto), f.moneda)}</Oculto> en cuotas a vencer
                               </span>
                             ))}
                         </li>
@@ -320,13 +326,13 @@ export default function Home() {
             <div className="flujo">
               <div>
                 <span className="flujo-etiqueta">Ingresos</span>
-                <span className="flujo-monto">{formatMonto(t.ingresos, moneda)}</span>
+                <span className="flujo-monto"><Oculto>{formatMonto(t.ingresos, moneda)}</Oculto></span>
               </div>
               <div>
                 <span className="flujo-etiqueta">Gastos</span>
-                <span className="flujo-monto">{formatMonto(t.gastos, moneda)}</span>
+                <span className="flujo-monto"><Oculto>{formatMonto(t.gastos, moneda)}</Oculto></span>
                 {t.gastosCredito > 0 && (
-                  <span className="flujo-sub">{formatMonto(t.gastosCredito, moneda)} con tarjeta</span>
+                  <span className="flujo-sub"><Oculto>{formatMonto(t.gastosCredito, moneda)}</Oculto> con tarjeta</span>
                 )}
               </div>
             </div>
@@ -342,7 +348,7 @@ export default function Home() {
 
             <div className="quedaron">
               <span>Te quedaron</span>
-              <strong className={quedaron < 0 ? 'negativo' : ''}>{formatMonto(redondear(quedaron), moneda)}</strong>
+              <strong className={quedaron < 0 ? 'negativo' : ''}><Oculto>{formatMonto(redondear(quedaron), moneda)}</Oculto></strong>
             </div>
 
             {hayDetalle ? (
@@ -352,19 +358,19 @@ export default function Home() {
                   {(t.aportes > 0 || t.rescates > 0) && (
                     <div>
                       <dt>Invertido (neto)</dt>
-                      <dd>{formatMonto(redondear(t.aportes - t.rescates), moneda)}</dd>
+                      <dd><Oculto>{formatMonto(redondear(t.aportes - t.rescates), moneda)}</Oculto></dd>
                     </div>
                   )}
                   {t.usadoEnDivisas !== 0 && (
                     <div>
                       <dt>Usado para comprar moneda extranjera</dt>
-                      <dd>{formatMonto(redondear(t.usadoEnDivisas), moneda)}</dd>
+                      <dd><Oculto>{formatMonto(redondear(t.usadoEnDivisas), moneda)}</Oculto></dd>
                     </div>
                   )}
                   {t.pagosTarjeta > 0 && (
                     <div>
                       <dt>Pagos de tarjeta</dt>
-                      <dd>{formatMonto(t.pagosTarjeta, moneda)}</dd>
+                      <dd><Oculto>{formatMonto(t.pagosTarjeta, moneda)}</Oculto></dd>
                     </div>
                   )}
                 </dl>
@@ -386,7 +392,7 @@ export default function Home() {
                         <span>
                           {c.nombre} <span className="categoria-flecha" aria-hidden="true">›</span>
                         </span>
-                        <span className="categoria-monto">{formatMonto(c.total, moneda)}</span>
+                        <span className="categoria-monto"><Oculto>{formatMonto(c.total, moneda)}</Oculto></span>
                       </div>
                       <div className="categoria-pista" aria-hidden="true">
                         <div className="categoria-barra" style={{ width: `${maximo ? (c.total / maximo) * 100 : 0}%` }} />

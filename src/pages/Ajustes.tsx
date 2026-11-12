@@ -4,6 +4,7 @@ import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import Combobox from '../components/Combobox'
 import MiCuenta from '../components/MiCuenta'
+import { Oculto } from '../lib/ocultar'
 import IconoCategoria from '../components/IconoCategoria'
 import SelectorIcono from '../components/SelectorIcono'
 import AvisoPush from '../components/AvisoPush'
@@ -180,7 +181,7 @@ export default function Ajustes() {
                   </div>
                   {montos.length === 1 && (
                     <div className="cuenta-saldos chico">
-                      <span>{montos[0].texto}</span>
+                      <span><Oculto>{montos[0].texto}</Oculto></span>
                     </div>
                   )}
                 </Link>
@@ -189,7 +190,7 @@ export default function Ajustes() {
                     {montos.map((m) => (
                       <Link key={m.moneda} to={`/movimientos?cuenta=${c.id}&moneda=${m.moneda}`} className="cuenta-sub">
                         <span>{nombreCortoMoneda(m.moneda)}</span>
-                        <span>{m.texto}</span>
+                        <span><Oculto>{m.texto}</Oculto></span>
                       </Link>
                     ))}
                   </div>

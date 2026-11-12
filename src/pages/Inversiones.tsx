@@ -1,5 +1,6 @@
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
+import { BotonOjo, Oculto } from '../lib/ocultar'
 import { useActivos, useCategorias, useInversiones } from '../lib/datos'
 import { formatCantidad, formatMonto, formatPrecio } from '../lib/format'
 import { calcularTenencias } from '../lib/tenencias'
@@ -31,6 +32,7 @@ export default function Inversiones() {
           <BotonMenu />
           <h1>Inversiones</h1>
         </div>
+        <BotonOjo className="boton-icono" />
       </header>
       <p className="muted chico">
         Tenencia y precio promedio de compra (PPP) por activo, calculados con las cantidades que cargaste. Las ventas
@@ -59,9 +61,11 @@ export default function Inversiones() {
                 <div>
                   <dt>Tenencia</dt>
                   <dd>
-                    {t.activo_id && divisaDe.get(t.activo_id)
-                      ? formatMonto(t.cantidad, divisaDe.get(t.activo_id)!)
-                      : formatCantidad(t.cantidad)}
+                    <Oculto>
+                      {t.activo_id && divisaDe.get(t.activo_id)
+                        ? formatMonto(t.cantidad, divisaDe.get(t.activo_id)!)
+                        : formatCantidad(t.cantidad)}
+                    </Oculto>
                   </dd>
                 </div>
                 {t.cantidad > 0 && (
@@ -76,7 +80,7 @@ export default function Inversiones() {
                     </div>
                     <div>
                       <dt>Costo de la tenencia</dt>
-                      <dd>{formatMonto(Math.round(t.costo * 100) / 100, t.moneda)}</dd>
+                      <dd><Oculto>{formatMonto(Math.round(t.costo * 100) / 100, t.moneda)}</Oculto></dd>
                     </div>
                   </>
                 )}
@@ -84,7 +88,7 @@ export default function Inversiones() {
                   <div>
                     <dt>Resultado de ventas</dt>
                     <dd className={t.resultadoRealizado < 0 ? 'negativo' : 'positivo'}>
-                      {formatMonto(Math.round(t.resultadoRealizado * 100) / 100, t.moneda)}
+                      <Oculto>{formatMonto(Math.round(t.resultadoRealizado * 100) / 100, t.moneda)}</Oculto>
                     </dd>
                   </div>
                 )}

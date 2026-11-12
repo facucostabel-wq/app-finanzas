@@ -3,6 +3,7 @@ import { formatMonto } from '../lib/format'
 import type { Plan, Progreso } from '../lib/objetivos'
 import type { Objetivo } from '../lib/objetivos'
 import IconoCategoria from './IconoCategoria'
+import { Oculto } from '../lib/ocultar'
 
 const redondo = (n: number) => Math.round(n)
 
@@ -43,7 +44,7 @@ export default function TarjetaObjetivo({
         <div className="objetivo-titulo">
           <span className="objetivo-nombre">{obj.nombre}</span>
           <span className="muted chico">
-            {formatMonto(redondo(progreso.total), obj.moneda)} de {formatMonto(obj.monto, obj.moneda)}
+            <Oculto>{formatMonto(redondo(progreso.total), obj.moneda)}</Oculto> de {formatMonto(obj.monto, obj.moneda)}
             {progreso.faltaTipo && ' *'}
           </span>
         </div>

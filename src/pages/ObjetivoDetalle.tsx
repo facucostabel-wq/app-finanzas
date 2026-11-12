@@ -5,6 +5,7 @@ import BottomNav from '../components/BottomNav'
 import Combobox, { type Opcion } from '../components/Combobox'
 import IconoCategoria from '../components/IconoCategoria'
 import { textoPlan } from '../components/TarjetaObjetivo'
+import { BotonOjo, Oculto } from '../lib/ocultar'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, parseMonto } from '../lib/format'
@@ -200,6 +201,7 @@ export default function ObjetivoDetalle() {
           <Link to="/objetivos" className="volver">
             ‹ Objetivos
           </Link>
+          <BotonOjo className="ojo-suelto" />
           {vigente && (
             <Link to={`/objetivos/${obj.id}/editar`} className="boton-icono" aria-label="Editar objetivo">
               <Pencil size={18} />
@@ -212,7 +214,7 @@ export default function ObjetivoDetalle() {
         <IconoCategoria nombre={obj.nombre} icono={obj.icono} tipo="gasto" />
         <h1>{obj.nombre}</h1>
         <p className="objetivo-cifra">
-          <strong>{formatMonto(Math.round(progreso.total), obj.moneda)}</strong>
+          <strong><Oculto>{formatMonto(Math.round(progreso.total), obj.moneda)}</Oculto></strong>
           <span className="muted"> de {formatMonto(obj.monto, obj.moneda)}</span>
         </p>
         <div className="objetivo-pista grande" role="progressbar" aria-valuenow={Math.floor(progreso.porcentaje)} aria-valuemin={0} aria-valuemax={100}>
@@ -247,10 +249,10 @@ export default function ObjetivoDetalle() {
                   <span className="muted chico">
                     {f.tipo === 'cuenta' ? 'Toda la cuenta' : f.tipo === 'activo' ? (f.alCosto ? 'Inversión (al costo)' : 'Inversión') : 'Separado de tus cuentas'}
                     {f.original.some((o) => o.moneda !== obj.moneda) &&
-                      ` · ${f.original.map((o) => formatMonto(Math.round(o.monto), o.moneda)).join(' + ')}`}
+                      <> · <Oculto>{f.original.map((o) => formatMonto(Math.round(o.monto), o.moneda)).join(' + ')}</Oculto></>}
                   </span>
                 </div>
-                <span className="monto">{f.valor === null ? '—' : formatMonto(Math.round(f.valor), obj.moneda)}</span>
+                <span className="monto">{f.valor === null ? '—' : <Oculto>{formatMonto(Math.round(f.valor), obj.moneda)}</Oculto>}</span>
                 {f.tipo !== 'apartado' && vigente && (
                   <button className="icono-quitar" onClick={() => quitarVinculo(f.clave)} aria-label={`Dejar de destinar ${f.nombre}`}>
                     <X size={16} />

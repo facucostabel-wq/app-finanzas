@@ -4,6 +4,7 @@ import { Plus, Target } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import TarjetaObjetivo from '../components/TarjetaObjetivo'
+import { BotonOjo } from '../lib/ocultar'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { calcularPlan, calcularProgreso } from '../lib/objetivos'
 
@@ -25,9 +26,12 @@ export default function Objetivos() {
           <BotonMenu />
           <h1>Objetivos</h1>
         </div>
-        <Link to="/objetivos/nuevo" className="boton-icono" aria-label="Nuevo objetivo">
-          <Plus size={22} />
-        </Link>
+        <div className="topbar-der">
+          <BotonOjo className="boton-icono" />
+          <Link to="/objetivos/nuevo" className="boton-icono" aria-label="Nuevo objetivo">
+            <Plus size={22} />
+          </Link>
+        </div>
       </header>
 
       {error && (
