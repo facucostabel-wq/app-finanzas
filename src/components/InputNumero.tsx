@@ -1,11 +1,15 @@
-import { useLayoutEffect, useRef, type InputHTMLAttributes } from 'react'
+import { useLayoutEffect, useRef, useState, type InputHTMLAttributes } from 'react'
+import { Calculator } from 'lucide-react'
 import { formatearNumero } from '../lib/format'
+import Calculadora from './Calculadora'
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
   value: string
   onChange: (valor: string) => void
   /** Decimales permitidos (montos: 2; cantidades: hasta 10). */
   decimales?: number
+  /** Muestra un botón de calculadora para sumar varios gastos. */
+  calculadora?: boolean
 }
 
 /**
@@ -13,8 +17,9 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 
  * La coma es el decimal; si el teclado solo tiene punto, el punto que escribís
  * también se toma como coma decimal.
  */
-export default function InputNumero({ value, onChange, decimales = 2, ...resto }: Props) {
+export default function InputNumero({ value, onChange, decimales = 2, calculadora = false, ...resto }: Props) {
   const ref = useRef<HTMLInputElement>(null)
+  const [calc, setCalc] = useState(false)
   const cursor = useRef<number | null>(null)
   const mostrado = formatearNumero(value, decimales)
 
@@ -46,5 +51,24 @@ export default function InputNumero({ value, onChange, decimales = 2, ...resto }
     onChange(nuevo)
   }
 
-  return <input ref={ref} inputMode="decimal" autoComplete="off" {...resto} value={mostrado} onChange={cambiar} />
+  const input = <input ref={ref} inputMode="decimal" autoComplete="off" {...resto} value={mostrado} onChange={cambiar} />
+  if (!calculadora) return input
+  return (
+    <span className="con-calculadora">
+      {input}
+      <button type="button" className="boton-calc" onClick={() => setCalc(true)} aria-label="Abrir calculadora">
+        <Calculator size={20} strokeWidth={1.9} />
+      </button>
+      {calc && (
+        <Calculadora
+          inicial={mostrado}
+          onUsar={(v) => {
+            onChange(formatearNumero(v, decimales))
+            setCalc(false)
+          }}
+          onCerrar={() => setCalc(false)}
+        />
+      )}
+    </span>
+  )
 }

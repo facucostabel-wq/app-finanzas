@@ -183,7 +183,7 @@ export default function GastoGrupoForm() {
           </label>
           <label>
             Monto total
-            <InputNumero className="monto-input" placeholder="0" value={montoTexto} onChange={setMontoTexto} />
+            <InputNumero calculadora className="monto-input" placeholder="0" value={montoTexto} onChange={setMontoTexto} />
           </label>
           <Combobox
             etiqueta="Moneda"

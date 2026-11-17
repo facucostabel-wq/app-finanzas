@@ -713,3 +713,27 @@ a.boton-icono { text-decoration: none; }
 .neto-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; }
 .neto-montos { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-variant-numeric: tabular-nums; }
 .neto-montos strong { font-size: 1.05rem; }
+
+/* Calculadora del monto */
+.con-calculadora { position: relative; display: block; }
+.con-calculadora input { width: 100%; padding-right: 52px; }
+.boton-calc {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--accent);
+  display: grid; place-items: center;
+}
+.calculadora { gap: 12px; }
+.calc-pantalla {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;
+  text-align: right; display: grid; gap: 2px; min-height: 76px;
+}
+.calc-expr { font-size: 1.35rem; font-weight: 600; word-break: break-all; font-variant-numeric: tabular-nums; }
+.calc-resultado { color: var(--accent); font-weight: 700; font-size: 1.05rem; min-height: 1.4em; }
+.calc-teclas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.calc-tecla {
+  height: 54px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 1.3rem; font-weight: 600; display: grid; place-items: center;
+}
+.calc-tecla.op { color: var(--accent); background: var(--accent-suave); border-color: transparent; }
+.calc-tecla:active { transform: scale(0.97); }
+.calc-acciones { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }

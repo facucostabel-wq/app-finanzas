@@ -382,6 +382,7 @@ export default function MovimientoForm() {
         <label>
           {enCuotas ? 'Monto total' : 'Monto'}
           <InputNumero
+            calculadora
             className="monto-input"
             placeholder="0"
             value={montoTexto}
