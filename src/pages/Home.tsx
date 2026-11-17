@@ -102,6 +102,16 @@ export default function Home() {
     { titulo: 'En grupos', filas: porCuenta.filter((x) => x.cuenta.tipo === 'grupo') },
   ].filter((g) => g.filas.length > 0)
 
+  // Neto de todas las cuentas: lo que tenés menos lo que debés (tarjetas en negativo),
+  // incluidos brokers y grupos. Por moneda, al cierre del mes que estás mirando.
+  const netoPorMoneda = new Map<Moneda, number>()
+  for (const s of saldosCuentas) netoPorMoneda.set(s.moneda, (netoPorMoneda.get(s.moneda) ?? 0) + s.monto)
+  const monedasNeto = ordenarMonedas(
+    [...netoPorMoneda.entries()].filter(([, v]) => Math.abs(v) >= 0.01).map(([m]) => m),
+    favoritas,
+  )
+  const hayCuotasFuturas = cuentas.some((c) => c.tipo === 'tarjeta' && futurasDe(c.id).length > 0)
+
   // Disponible: la moneda principal grande, el resto chico debajo.
   const monedasDisponible = ordenarMonedas(
     [...disponible.entries()].filter(([, v]) => Math.abs(v) >= 0.01).map(([m]) => m),
@@ -243,6 +253,24 @@ export default function Home() {
                     </ul>
                   </div>
                 ))}
+                {monedasNeto.length > 0 && (
+                  <div className="neto-cuentas">
+                    <div className="neto-fila">
+                      <span>Neto de todas tus cuentas</span>
+                      <span className="neto-montos">
+                        {monedasNeto.map((m) => (
+                          <strong key={m} className={netoPorMoneda.get(m)! < 0 ? 'negativo' : ''}>
+                            <Oculto>{formatMonto(redondear(netoPorMoneda.get(m)!), m)}</Oculto>
+                          </strong>
+                        ))}
+                      </span>
+                    </div>
+                    <p className="muted chico">
+                      Lo que tenés en todas las cuentas (incluidos brokers y grupos) menos lo que debés de tarjetas
+                      {hayCuotasFuturas ? '. No incluye las cuotas a vencer' : ''}.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             {!cargandoSaldos && saldos.length === 0 && (

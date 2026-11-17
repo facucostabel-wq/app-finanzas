@@ -706,3 +706,10 @@ a.boton-icono { text-decoration: none; }
 .topbar-der { display: flex; gap: 8px; align-items: center; }
 .subpagina-fila .ojo-suelto { margin-left: auto; margin-right: 8px; }
 .hero-monto .oculto { font-size: 0.72em; letter-spacing: 0.06em; }
+
+/* Neto de todas las cuentas (al pie de "Ver por cuenta") */
+.neto-cuentas { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 4px; }
+.neto-cuentas p { margin: 0; }
+.neto-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; }
+.neto-montos { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-variant-numeric: tabular-nums; }
+.neto-montos strong { font-size: 1.05rem; }
