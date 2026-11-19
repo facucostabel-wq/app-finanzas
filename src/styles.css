@@ -745,3 +745,27 @@ a.boton-icono { text-decoration: none; }
 .aviso-suave svg { flex: none; margin-top: 2px; }
 .combo-opcion.apagada { opacity: 0.5; }
 .icono-alerta { color: var(--aviso); display: inline-flex; vertical-align: -2px; margin-left: 4px; }
+
+/* Cartera de inversiones */
+.cartera-hero { display: grid; gap: 4px; margin: 4px 0 18px; }
+.cartera-hero p { margin: 0; }
+.cartera-cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.cartera-cifras > div { display: flex; flex-direction: column; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; }
+.cartera-cifras strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.cartera-pct { font-size: 0.9rem; font-weight: 600; }
+.reparto { display: grid; gap: 10px; }
+.reparto-barra { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--surface-2); gap: 2px; }
+.reparto-barra span { display: block; height: 100%; min-width: 3px; }
+.reparto-leyenda { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 0.9rem; }
+.reparto-leyenda li { display: flex; align-items: center; gap: 8px; }
+.reparto-leyenda li span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reparto-punto { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.fila.posicion { justify-content: flex-start; gap: 12px; }
+.posicion-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.posicion-nombre { font-weight: 600; }
+.posicion-valor { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-variant-numeric: tabular-nums; }
+.pildora { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.pildora.sube { color: var(--accent); background: var(--accent-suave); }
+.pildora.baja { color: var(--error); background: rgb(255 122 107 / 0.12); }
+.sin-valor { color: var(--aviso); }
+.bloque-linea { display: block; }

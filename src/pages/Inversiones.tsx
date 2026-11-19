@@ -1,29 +1,42 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { RefreshCw } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
+import IconoCategoria from '../components/IconoCategoria'
+import { haceCuanto, type Posicion } from '../lib/cartera'
+import { formatCantidad, formatMonto } from '../lib/format'
 import { BotonOjo, Oculto } from '../lib/ocultar'
-import { useActivos, useCategorias, useInversiones } from '../lib/datos'
-import { formatCantidad, formatMonto, formatPrecio } from '../lib/format'
-import { calcularTenencias } from '../lib/tenencias'
+import { useCartera } from '../lib/useCartera'
+
+const COLORES = ['var(--accent)', '#5b8def', '#f5b84a', '#e46b8a', '#9b7bf0', '#4cc3d9', '#8bc34a']
+const usd = (n: number) => formatMonto(Math.round(n), 'USD')
+const pct = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1).replace('.', ',')}%`
+
+export function textoFuente(p: Posicion): string {
+  if (p.fuente === 'auto') return 'precio automático'
+  if (p.fuente === 'manual') return `actualizado ${haceCuanto(p.valorFecha)}`
+  if (p.fuente === 'cierre') return 'al último cierre'
+  return 'sin actualizar'
+}
 
 export default function Inversiones() {
-  const { movimientos, loading, error } = useInversiones()
-  const { categorias } = useCategorias()
-  const { activos } = useActivos()
-  const nombreCat = new Map(categorias.map((c) => [c.id, c.nombre]))
-  const divisaDe = new Map(activos.map((a) => [a.id, a.divisa]))
-  const nombreActivo = new Map(activos.map((a) => [a.id, a.nombre]))
-
-  const tenencias = calcularTenencias(movimientos)
-  const conCantidad = tenencias.filter((t) => t.cantidad > 0 || t.resultadoRealizado !== 0)
-  const sinCantidad = tenencias.reduce((n, t) => n + t.sinCantidad, 0)
-
-  // Agrupadas por categoría (Cripto, CEDEARs…), en el orden de las categorías.
+  const { posiciones, totales, categorias, tipos, loading, error, hayMepHistorico, refrescarCripto } = useCartera()
+  const [verVendidas, setVerVendidas] = useState(false)
+  const nombreCat = new Map(categorias.map((c) => [c.id, c]))
   const orden = new Map(categorias.map((c, i) => [c.id, i]))
-  conCantidad.sort(
-    (a, b) =>
-      (orden.get(a.categoria_id) ?? 99) - (orden.get(b.categoria_id) ?? 99) ||
-      (nombreActivo.get(a.activo_id ?? '') ?? '').localeCompare(nombreActivo.get(b.activo_id ?? '') ?? ''),
-  )
+
+  const abiertas = posiciones
+    .filter((p) => p.cantidad > 0 || (p.porMonto && p.costoUsd > 0.005))
+    .sort(
+      (a, b) =>
+        (orden.get(a.categoria_id) ?? 99) - (orden.get(b.categoria_id) ?? 99) || b.valorUsd - a.valorUsd,
+    )
+  const vendidas = posiciones.filter((p) => !abiertas.includes(p) && Math.abs(p.realizadoUsd) >= 0.5)
+  const porCat = new Map<string, Posicion[]>()
+  for (const p of abiertas) porCat.set(p.categoria_id, [...(porCat.get(p.categoria_id) ?? []), p])
+  const colorDe = new Map(totales.porCategoria.map((c, i) => [c.categoria_id, COLORES[i % COLORES.length]]))
+  const mep = tipos.get('USD')
 
   return (
     <main className="screen con-nav">
@@ -32,78 +45,156 @@ export default function Inversiones() {
           <BotonMenu />
           <h1>Inversiones</h1>
         </div>
-        <BotonOjo className="boton-icono" />
+        <div className="topbar-der">
+          <button className="boton-icono" onClick={refrescarCripto} aria-label="Actualizar precios automáticos">
+            <RefreshCw size={18} />
+          </button>
+          <BotonOjo className="boton-icono" />
+        </div>
       </header>
-      <p className="muted chico">
-        Tenencia y precio promedio de compra (PPP) por activo, calculados con las cantidades que cargaste. Las ventas
-        no cambian el PPP.
-      </p>
 
       {error && <p className="error">No se pudieron cargar las inversiones: {error}</p>}
       {loading ? (
         <p className="muted">Cargando…</p>
-      ) : conCantidad.length === 0 ? (
+      ) : abiertas.length === 0 ? (
         <section className="card vacio">
-          <p>Todavía no hay inversiones con cantidad cargada.</p>
-          <p className="muted chico">Al cargar una inversión, completá la cantidad comprada para ver acá tu tenencia.</p>
+          <p>Todavía no tenés inversiones cargadas.</p>
+          <p className="muted chico">Cargá una con el botón + → Inversión. Si ponés la cantidad, vas a ver el precio promedio.</p>
         </section>
       ) : (
-        <ul className="lista card">
-          {conCantidad.map((t) => (
-            <li key={t.clave} className="tenencia">
-              <div className="tenencia-cabecera">
-                <strong>{t.activo_id ? nombreActivo.get(t.activo_id) : `${nombreCat.get(t.categoria_id)} (general)`}</strong>
+        <>
+          <section className="cartera-hero">
+            <span className="hero-etiqueta">Tu cartera hoy</span>
+            <p className="hero-monto">
+              <Oculto>{usd(totales.valorUsd)}</Oculto>
+            </p>
+            {mep && (
+              <p className="muted chico">
+                ≈ <Oculto>{formatMonto(Math.round(totales.valorUsd * mep), 'ARS')}</Oculto> al MEP de hoy
+              </p>
+            )}
+            <div className="cartera-cifras">
+              <div>
+                <span className="muted chico">Invertiste</span>
+                <strong>
+                  <Oculto>{usd(totales.costoUsd)}</Oculto>
+                </strong>
+              </div>
+              <div>
+                <span className="muted chico">Resultado</span>
+                <strong className={totales.resultadoUsd < 0 ? 'negativo' : 'positivo'}>
+                  <Oculto>
+                    {totales.resultadoUsd >= 0 ? '+' : '−'}
+                    {usd(Math.abs(totales.resultadoUsd))}
+                  </Oculto>
+                  {totales.porcentaje !== null && <span className="cartera-pct"> {pct(totales.porcentaje)}</span>}
+                </strong>
+              </div>
+            </div>
+            {Math.abs(totales.realizadoUsd) >= 0.5 && (
+              <p className="muted chico">
+                Por ventas ya hechas: <Oculto>{`${totales.realizadoUsd >= 0 ? '+' : '−'}${usd(Math.abs(totales.realizadoUsd))}`}</Oculto>
+              </p>
+            )}
+            {totales.sinValor > 0 && (
+              <p className="muted chico">
+                {totales.sinValor === 1 ? '1 inversión sin valor actualizado cuenta' : `${totales.sinValor} inversiones sin valor actualizado cuentan`}{' '}
+                por lo que pagaste. Tocala para actualizarla.
+              </p>
+            )}
+          </section>
+
+          {totales.porCategoria.length > 1 && totales.valorUsd > 0 && (
+            <section className="bloque reparto" aria-label="Reparto por categoría">
+              <div className="reparto-barra" aria-hidden="true">
+                {totales.porCategoria.map((c) => (
+                  <span
+                    key={c.categoria_id}
+                    style={{ width: `${(c.valorUsd / totales.valorUsd) * 100}%`, background: colorDe.get(c.categoria_id) }}
+                  />
+                ))}
+              </div>
+              <ul className="reparto-leyenda">
+                {totales.porCategoria.map((c) => (
+                  <li key={c.categoria_id}>
+                    <span className="reparto-punto" style={{ background: colorDe.get(c.categoria_id) }} />
+                    <span>{nombreCat.get(c.categoria_id)?.nombre ?? 'Otras'}</span>
+                    <span className="muted">{Math.round((c.valorUsd / totales.valorUsd) * 100)}%</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {[...porCat].map(([catId, lista]) => (
+            <section key={catId} className="bloque">
+              <div className="titulo-con-accion">
+                <h2>{nombreCat.get(catId)?.nombre ?? 'Inversiones'}</h2>
                 <span className="muted chico">
-                  {nombreCat.get(t.categoria_id)} · {t.moneda}
+                  <Oculto>{usd(lista.reduce((t, p) => t + p.valorUsd, 0))}</Oculto>
                 </span>
               </div>
-              <dl className="totales chico">
-                <div>
-                  <dt>Tenencia</dt>
-                  <dd>
-                    <Oculto>
-                      {t.activo_id && divisaDe.get(t.activo_id)
-                        ? formatMonto(t.cantidad, divisaDe.get(t.activo_id)!)
-                        : formatCantidad(t.cantidad)}
-                    </Oculto>
-                  </dd>
-                </div>
-                {t.cantidad > 0 && (
-                  <>
-                    <div>
-                      <dt>
-                        {t.activo_id && divisaDe.get(t.activo_id)
-                          ? `Precio promedio por ${divisaDe.get(t.activo_id)}`
-                          : 'Precio promedio (PPP)'}
-                      </dt>
-                      <dd>{formatPrecio(t.ppp, t.moneda)}</dd>
-                    </div>
-                    <div>
-                      <dt>Costo de la tenencia</dt>
-                      <dd><Oculto>{formatMonto(Math.round(t.costo * 100) / 100, t.moneda)}</Oculto></dd>
-                    </div>
-                  </>
-                )}
-                {Math.abs(t.resultadoRealizado) >= 0.01 && (
-                  <div>
-                    <dt>Resultado de ventas</dt>
-                    <dd className={t.resultadoRealizado < 0 ? 'negativo' : 'positivo'}>
-                      <Oculto>{formatMonto(Math.round(t.resultadoRealizado * 100) / 100, t.moneda)}</Oculto>
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </li>
+              <ul className="lista">
+                {lista.map((p) => (
+                  <li key={p.clave}>
+                    <Link to={`/inversiones/${encodeURIComponent(p.clave)}`} className="fila posicion">
+                      <IconoCategoria nombre={p.nombre} tipo="aporte" />
+                      <div className="posicion-texto">
+                        <span className="posicion-nombre">{p.nombre}</span>
+                        <span className="muted chico">
+                          {p.cantidad > 0 ? (
+                            <>
+                              <Oculto>{p.divisa ? formatMonto(p.cantidad, p.divisa) : `${formatCantidad(p.cantidad)} u.`}</Oculto> ·{' '}
+                            </>
+                          ) : null}
+                          <span className={p.fuente === 'costo' ? 'sin-valor' : ''}>{textoFuente(p)}</span>
+                        </span>
+                      </div>
+                      <div className="posicion-valor">
+                        <strong>
+                          <Oculto>{usd(p.valorUsd)}</Oculto>
+                        </strong>
+                        {p.porcentaje !== null ? (
+                          <span className={`pildora ${p.porcentaje < 0 ? 'baja' : 'sube'}`}>{pct(p.porcentaje)}</span>
+                        ) : (
+                          <span className="muted chico">—</span>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
-      )}
 
-      {sinCantidad > 0 && (
-        <p className="muted chico">
-          {sinCantidad === 1
-            ? '1 movimiento de inversión no tiene cantidad cargada y no entra en este cálculo.'
-            : `${sinCantidad} movimientos de inversión no tienen cantidad cargada y no entran en este cálculo.`}
-        </p>
+          {vendidas.length > 0 && (
+            <section className="cumplidos">
+              <button className="link" onClick={() => setVerVendidas((v) => !v)} aria-expanded={verVendidas}>
+                {verVendidas ? 'Ocultar' : 'Ver'} inversiones ya vendidas ({vendidas.length})
+              </button>
+              {verVendidas && (
+                <ul className="lista card">
+                  {vendidas.map((p) => (
+                    <li key={p.clave}>
+                      <Link to={`/inversiones/${encodeURIComponent(p.clave)}`} className="fila">
+                        <span>{p.nombre}</span>
+                        <span className={p.realizadoUsd < 0 ? 'negativo' : 'positivo'}>
+                          <Oculto>{`${p.realizadoUsd >= 0 ? '+' : '−'}${usd(Math.abs(p.realizadoUsd))}`}</Oculto>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          <p className="muted chico">
+            Todo en dólares MEP. Lo que invertiste en pesos se pasa a dólares con el MEP del día de cada compra
+            {hayMepHistorico ? '' : ' (sin conexión a la serie histórica, por ahora con el dólar de hoy)'}. Las cripto y las
+            monedas se actualizan solas; el resto, tocando cada inversión o con el cierre de mes.
+          </p>
+        </>
       )}
       <BottomNav />
     </main>

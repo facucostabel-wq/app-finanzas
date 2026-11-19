@@ -192,3 +192,105 @@ export function useTiposHoy(monedas: Moneda[], respaldo?: Tipos) {
   for (const [m, v] of tipos) combinados.set(m, v)
   return combinados
 }
+
+const CLAVE_HIST = 'mep_historico'
+
+/**
+ * Dólar MEP de cualquier fecha (serie diaria de ArgentinaDatos), para pasar a dólares
+ * cada compra con el dólar de ese día. Se guarda en el dispositivo y se renueva una vez por día.
+ * Devuelve null mientras no se tiene la serie.
+ */
+export function useMepHistorico() {
+  const [serie, setSerie] = useState<[string, number][] | null>(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(CLAVE_HIST) ?? 'null') as { t: number; v: [string, number][] } | null
+      return c?.v?.length ? c.v : null
+    } catch {
+      return null
+    }
+  })
+  useEffect(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(CLAVE_HIST) ?? 'null') as { t: number } | null
+      if (c && Date.now() - c.t < 20 * 3600000) return
+    } catch {
+      /* nada */
+    }
+    json<{ fecha: string; venta: number }[]>('https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa')
+      .then((datos) => {
+        const v = datos
+          .filter((d) => d.fecha && d.venta > 0)
+          .map((d) => [d.fecha.slice(0, 10), d.venta] as [string, number])
+          .sort((a, b) => a[0].localeCompare(b[0]))
+        if (!v.length) return
+        setSerie(v)
+        try {
+          localStorage.setItem(CLAVE_HIST, JSON.stringify({ t: Date.now(), v }))
+        } catch {
+          /* sin lugar: se usa en memoria */
+        }
+      })
+      .catch(() => {
+        /* sin conexión: se usa el dólar de hoy como aproximación */
+      })
+  }, [])
+
+  if (!serie) return null
+  /** Último MEP publicado hasta esa fecha (fines de semana y feriados usan el anterior). */
+  return (fecha: string): number | null => {
+    let lo = 0
+    let hi = serie.length - 1
+    if (fecha < serie[0][0]) return null
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1
+      if (serie[mid][0] <= fecha) lo = mid
+      else hi = mid - 1
+    }
+    return serie[lo][1]
+  }
+}
+
+const CLAVE_CRIPTO = 'precios_cripto'
+
+/** Precio actual en USD de las cripto conocidas (se renueva cada 15 minutos). */
+export function usePreciosCripto(ids: string[]) {
+  const [precios, setPrecios] = useState<Map<string, number>>(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(CLAVE_CRIPTO) ?? 'null') as { t: number; v: [string, number][] } | null
+      return new Map(c?.v ?? [])
+    } catch {
+      return new Map()
+    }
+  })
+  const [actualizado, setActualizado] = useState<number | null>(null)
+  const clave = [...new Set(ids)].sort().join(',')
+  const traer = (forzar = false) => {
+    if (!clave) return
+    try {
+      const c = JSON.parse(localStorage.getItem(CLAVE_CRIPTO) ?? 'null') as { t: number; v: [string, number][] } | null
+      const faltan = clave.split(',').some((id) => !c?.v?.some(([k]) => k === id))
+      if (!forzar && c && !faltan && Date.now() - c.t < 15 * 60000) {
+        setActualizado(c.t)
+        return
+      }
+    } catch {
+      /* nada */
+    }
+    traerCripto(clave.split(',')).then((p) => {
+      if (!p.size) return
+      setPrecios(p)
+      const t = Date.now()
+      setActualizado(t)
+      try {
+        localStorage.setItem(CLAVE_CRIPTO, JSON.stringify({ t, v: [...p] }))
+      } catch {
+        /* nada */
+      }
+    })
+  }
+  useEffect(() => {
+    traer()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave])
+  return { precios, actualizado, refrescar: () => traer(true) }
+}

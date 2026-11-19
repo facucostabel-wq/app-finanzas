@@ -24,6 +24,7 @@ import Objetivos from './pages/Objetivos'
 import ObjetivoForm from './pages/ObjetivoForm'
 import ObjetivoDetalle from './pages/ObjetivoDetalle'
 import Cierre from './pages/Cierre'
+import InversionDetalle from './pages/InversionDetalle'
 import Privacidad from './pages/Privacidad'
 
 export default function App() {
@@ -106,6 +107,7 @@ export default function App() {
       <Route path="/nuevo" element={protegida(<MovimientoForm key="nuevo" />)} />
       <Route path="/movimiento/:id" element={protegida(<MovimientoForm />)} />
       <Route path="/inversiones" element={protegida(<Inversiones />)} />
+      <Route path="/inversiones/:clave" element={protegida(<InversionDetalle />)} />
       <Route path="/objetivos" element={protegida(<Objetivos />)} />
       <Route path="/objetivos/nuevo" element={protegida(<ObjetivoForm />)} />
       <Route path="/objetivos/:id" element={protegida(<ObjetivoDetalle />)} />
