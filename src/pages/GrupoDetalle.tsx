@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { marcarLeidas } from '../lib/push'
 import Combobox, { type Opcion } from '../components/Combobox'
-import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas } from '../lib/datos'
+import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas, type Cuenta } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, nombreDia, parseMonto } from '../lib/format'
 import {
   calcularPendientes,
@@ -17,6 +17,7 @@ import {
 } from '../lib/grupos'
 import { supabase } from '../lib/supabase'
 import InputNumero from '../components/InputNumero'
+import { AvisoFondosCuenta } from '../lib/avisos'
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
@@ -280,6 +281,7 @@ export default function GrupoDetalle() {
           nombre={nombre}
           cuentaGrupo={cuentaGrupo}
           opcionesCuenta={opcionesCuenta}
+          cuentasPropias={cuentas}
           onListo={() => {
             setSaldando(null)
             recargar()
@@ -302,6 +304,7 @@ export default function GrupoDetalle() {
               cuentaGrupo={cuentaGrupo}
               opcionesCategoria={opcionesCategoria}
               opcionesCuenta={opcionesCuenta}
+              cuentasPropias={cuentas}
               onListo={recargar}
             />
           ))}
@@ -377,9 +380,10 @@ function RegistrarPendiente(props: {
   cuentaGrupo: string
   opcionesCategoria: Opcion[]
   opcionesCuenta: Opcion[]
+  cuentasPropias: Cuenta[]
   onListo: () => void
 }) {
-  const { pendiente: p, grupoId, nombre, cuentaGrupo, opcionesCategoria, opcionesCuenta, onListo } = props
+  const { pendiente: p, grupoId, nombre, cuentaGrupo, opcionesCategoria, opcionesCuenta, cuentasPropias, onListo } = props
   const [categoria, setCategoria] = useState<string | null>(leerCat(grupoId))
   const [cuenta, setCuenta] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -429,6 +433,15 @@ function RegistrarPendiente(props: {
           onCambio={setCuenta}
         />
       )}
+      {p.pague && (
+        <AvisoFondosCuenta
+          cuentas={cuentasPropias}
+          cuentaId={cuenta}
+          moneda={p.tipo === 'gasto' ? p.gasto.moneda : p.pago.moneda}
+          monto={p.tipo === 'gasto' ? p.gasto.monto : p.pago.monto}
+          fecha={p.tipo === 'gasto' ? p.gasto.fecha : p.pago.fecha}
+        />
+      )}
       {error && <p className="error">{error}</p>}
       <button className="primary" onClick={registrar} disabled={busy}>
         {busy ? 'Registrando…' : 'Registrar'}
@@ -444,10 +457,11 @@ function Saldar(props: {
   nombre: (m: string) => string
   cuentaGrupo: string
   opcionesCuenta: Opcion[]
+  cuentasPropias: Cuenta[]
   onListo: () => void
   onCancelar: () => void
 }) {
-  const { deuda, grupoId, miMiembro, nombre, cuentaGrupo, opcionesCuenta, onListo, onCancelar } = props
+  const { deuda, grupoId, miMiembro, nombre, cuentaGrupo, opcionesCuenta, cuentasPropias, onListo, onCancelar } = props
   const pago = deuda.de === miMiembro
   const [montoTexto, setMontoTexto] = useState(montoAEditable(deuda.monto))
   const [cuenta, setCuenta] = useState<string | null>(null)
@@ -493,6 +507,9 @@ function Saldar(props: {
         <InputNumero value={montoTexto} onChange={setMontoTexto} />
       </label>
       <Combobox etiqueta={pago ? 'Pagás con' : 'Entró a'} opciones={opcionesCuenta} valor={cuenta} onCambio={setCuenta} />
+      {pago && (
+        <AvisoFondosCuenta cuentas={cuentasPropias} cuentaId={cuenta} moneda={deuda.moneda} monto={parseMonto(montoTexto)} fecha={hoyISO()} verbo="con este pago" />
+      )}
       {error && <p className="error">{error}</p>}
       <button className="primary" onClick={confirmar} disabled={busy}>
         {busy ? 'Guardando…' : 'Confirmar pago'}

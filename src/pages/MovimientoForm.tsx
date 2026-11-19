@@ -10,9 +10,14 @@ import {
   tipoCategoriaDe,
   useCategorias,
   useCuentas,
+  useInversiones,
+  useSaldosAl,
+  type Movimiento,
   type TipoMovimiento,
 } from '../lib/datos'
-import { formatMonto, formatPrecio, hoyISO, montoAEditable, nombreMes, parseCantidad, parseMonto } from '../lib/format'
+import { formatCantidad, formatMonto, formatPrecio, hoyISO, montoAEditable, nombreMes, parseCantidad, parseMonto } from '../lib/format'
+import { Aviso, avisoFecha, avisoFondos, efectosDe, opcionesConSaldo, saldoDe } from '../lib/avisos'
+import { calcularTenencias } from '../lib/tenencias'
 import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
@@ -65,6 +70,11 @@ export default function MovimientoForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(editando)
+  // Cómo estaba guardado (al editar), para no contarlo dos veces en los avisos.
+  const [original, setOriginal] = useState<Movimiento | null>(null)
+  const [delDia, setDelDia] = useState<Movimiento[]>([])
+  const saldosFecha = useSaldosAl(fecha)
+  const { movimientos: inversiones } = useInversiones()
 
   // Al editar, traer el movimiento.
   useEffect(() => {
@@ -102,6 +112,7 @@ export default function MovimientoForm() {
         setCantidadTexto(m.cantidad ? montoAEditable(m.cantidad) : '')
         setFecha(m.fecha)
         setNota(m.nota ?? '')
+        setOriginal(m)
       }
       setCargando(false)
     })
@@ -155,6 +166,10 @@ export default function MovimientoForm() {
     detalle: TEXTO_TIPO_CUENTA[c.tipo],
   }))
   const opcionesDestino = opcionesCuenta.filter((o) => o.valor !== cuentaId)
+  // Lo que ya estaba guardado de este movimiento no cuenta para los avisos.
+  const descontar = original && original.fecha <= fecha ? efectosDe(original) : []
+  const saleplata = tipoMovimiento === 'gasto' || tipoMovimiento === 'aporte' || tipoMovimiento === 'transferencia'
+  const opcionesOrigen = saleplata ? opcionesConSaldo(cuentasActivas, moneda, saldosFecha, descontar) : opcionesCuenta
   const destinoEsTarjeta = cuentas.find((c) => c.id === destinoId)?.tipo === 'tarjeta'
   const conTarjeta = tipoMovimiento === 'gasto' && cuentas.find((c) => c.id === cuentaId)?.tipo === 'tarjeta'
   const enCuotas = conTarjeta && cuotas > 1
@@ -174,6 +189,66 @@ export default function MovimientoForm() {
         : tipoMovimiento === 'aporte'
           ? 'Sale de'
           : 'Entra a'
+
+  // ---- Avisos (no frenan: se puede guardar igual) ----
+  const cuenta = cuentas.find((c) => c.id === cuentaId)
+  const destino = cuentas.find((c) => c.id === destinoId)
+  const avisoCuenta = saleplata
+    ? avisoFondos({
+        cuenta,
+        moneda,
+        monto,
+        saldos: saldosFecha,
+        descontar,
+        verbo: tipoMovimiento === 'aporte' ? 'con esta inversión' : esTransferencia ? 'con esta transferencia' : 'con este gasto',
+      })
+    : null
+  // Pago de tarjeta mayor a lo que se debe.
+  const avisoTarjeta = (() => {
+    if (!esTransferencia || !destinoEsTarjeta || !destino || !monto || !saldosFecha) return null
+    const deuda = Math.round(-saldoDe(saldosFecha, destino.id, moneda, descontar) * 100) / 100
+    if (deuda <= 0.005) return `${nombreCuenta(destino)} no tiene deuda en ${moneda} a esa fecha.`
+    if (monto > deuda + 0.005)
+      return `${nombreCuenta(destino)} debe ${formatMonto(deuda, moneda)}; estás pagando ${formatMonto(Math.round((monto - deuda) * 100) / 100, moneda)} de más.`
+    return null
+  })()
+  // Retirar más unidades de las que tenés.
+  const avisoCantidad = (() => {
+    if (!esInversion || sentido !== 'rescate' || !activoId || !cantidad) return null
+    const previas = inversiones.filter((m) => m.id !== id && m.fecha <= fecha && m.activo_id === activoId)
+    const tenencia = calcularTenencias(previas).reduce((t, x) => t + x.cantidad, 0)
+    const nombre = activos.find((a) => a.id === activoId)?.nombre ?? 'esa inversión'
+    if (tenencia <= 1e-9) return `No tenés ${nombre} cargado a esa fecha.`
+    if (cantidad > tenencia + 1e-9) return `Tenés ${formatCantidad(tenencia)} de ${nombre}; estás retirando ${formatCantidad(cantidad)}.`
+    return null
+  })()
+  // Uno igual el mismo día (mismo tipo, monto, moneda, categoría y cuentas).
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return
+    let vigente = true
+    supabase
+      .from('movimientos')
+      .select('id, tipo, monto, moneda, categoria_id, cuenta_id, cuenta_destino_id, compra_id')
+      .eq('fecha', fecha)
+      .then(({ data }) => vigente && setDelDia(((data ?? []) as Movimiento[]).map((m) => ({ ...m, monto: Number(m.monto) }))))
+    return () => {
+      vigente = false
+    }
+  }, [fecha])
+  const duplicado =
+    !enCuotas &&
+    monto &&
+    delDia.some(
+      (m) =>
+        m.id !== id &&
+        !m.compra_id &&
+        m.tipo === tipoMovimiento &&
+        m.moneda === moneda &&
+        Math.abs(m.monto - monto) < 0.005 &&
+        m.cuenta_id === cuentaId &&
+        (esTransferencia ? m.cuenta_destino_id === destinoId : m.categoria_id === categoriaId),
+    )
+  const avisoFechaFutura = avisoFecha(fecha)
 
   // Movimiento nuevo: propone la última cuenta usada para este tipo.
   useEffect(() => {
@@ -411,7 +486,7 @@ export default function MovimientoForm() {
           <>
             <Combobox
               etiqueta="Desde"
-              opciones={opcionesCuenta}
+              opciones={opcionesOrigen}
               valor={cuentaId}
               onCambio={(v) => {
                 setCuentaId(v)
@@ -426,6 +501,8 @@ export default function MovimientoForm() {
               onCambio={setDestinoId}
               placeholder="Buscar cuenta…"
             />
+            {avisoCuenta && <Aviso>{avisoCuenta}</Aviso>}
+            {avisoTarjeta && <Aviso>{avisoTarjeta}</Aviso>}
             <p className="muted chico">
               {destinoEsTarjeta
                 ? 'Pago de tarjeta: no es un gasto nuevo (los consumos ya están cargados); baja el disponible y la deuda de la tarjeta.'
@@ -479,6 +556,7 @@ export default function MovimientoForm() {
                 ? `En el resumen cuenta esta cantidad en ${divisa ?? 'esa moneda'}, sin conversión. El monto es lo que pagaste o cobraste.`
                 : 'Unidades, nominales o cuotapartes.'}
             </small>
+            {avisoCantidad && <Aviso>{avisoCantidad}</Aviso>}
             {cotizacion && (
               <span className="cotizacion">
                 {divisa ? (sentido === 'aporte' ? 'Compraste a ' : 'Vendiste a ') : 'Cotización: '}
@@ -491,12 +569,13 @@ export default function MovimientoForm() {
         {!esTransferencia && (
           <Combobox
             etiqueta={etiquetaCuenta}
-            opciones={opcionesCuenta}
+            opciones={opcionesOrigen}
             valor={cuentaId}
             onCambio={setCuentaId}
             placeholder="Buscar cuenta o tarjeta…"
           />
         )}
+        {!esTransferencia && avisoCuenta && <Aviso>{avisoCuenta}</Aviso>}
 
         {conTarjeta && (
           <div className="grupo">
@@ -538,6 +617,8 @@ export default function MovimientoForm() {
           Fecha
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </label>
+        {avisoFechaFutura && <Aviso>{avisoFechaFutura}</Aviso>}
+        {duplicado && <Aviso>Ya cargaste uno igual ese día (mismo monto, {esTransferencia ? 'cuentas' : 'categoría y cuenta'}).</Aviso>}
 
         <label>
           Nota (opcional)

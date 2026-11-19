@@ -8,6 +8,7 @@ import { dividirIguales, registrarGasto, useGrupo, type GastoGrupo } from '../li
 import { MONEDAS } from '../lib/monedas'
 import { supabase } from '../lib/supabase'
 import InputNumero from '../components/InputNumero'
+import { AvisoFondosCuenta } from '../lib/avisos'
 
 type Modo = 'iguales' | 'montos' | 'porcentajes'
 
@@ -282,6 +283,7 @@ export default function GastoGrupoForm() {
                   onCambio={setCuentaPago}
                 />
               )}
+              {pague && <AvisoFondosCuenta cuentas={cuentas} cuentaId={cuentaPago} moneda={moneda} monto={monto} fecha={fecha} />}
               <small className="muted">
                 {pague
                   ? 'Sale el total de tu cuenta; tu parte cuenta como gasto y el resto queda como plata que te deben.'

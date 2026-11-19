@@ -416,3 +416,31 @@ export function useCuotasFuturas(desde: string) {
   }, [desde])
   return futuras
 }
+
+/** Saldos de todas las cuentas al final del día `fecha` (YYYY-MM-DD), incluido ese día. */
+export function useSaldosAl(fecha: string) {
+  const [saldos, setSaldos] = useState<SaldoInicial[] | null>(null)
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return
+    const d = new Date(`${fecha}T12:00:00`)
+    d.setDate(d.getDate() + 1)
+    const hasta = d.toISOString().slice(0, 10)
+    let vigente = true
+    supabase.rpc('saldos_al', { hasta }).then(({ data, error }) => {
+      if (!vigente) return
+      setSaldos(
+        error
+          ? null
+          : ((data ?? []) as { cuenta_id: string; moneda: string; monto: number }[]).map((r) => ({
+              cuenta_id: r.cuenta_id,
+              moneda: r.moneda,
+              monto: Number(r.monto),
+            })),
+      )
+    })
+    return () => {
+      vigente = false
+    }
+  }, [fecha])
+  return saldos
+}

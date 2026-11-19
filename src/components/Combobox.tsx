@@ -7,6 +7,8 @@ export type Opcion = {
   detalle?: string
   /** Encabezado del grupo al que pertenece (p. ej. "Favoritas"). */
   grupo?: string
+  /** Se muestra más apagada (por ejemplo, una cuenta sin fondos). Se puede elegir igual. */
+  apagada?: boolean
 }
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -145,7 +147,7 @@ export default function Combobox({
                 <div
                   role="option"
                   aria-selected={o.valor === valor}
-                  className={`combo-opcion ${i === activo ? 'activa' : ''}`}
+                  className={`combo-opcion ${i === activo ? 'activa' : ''} ${o.apagada ? 'apagada' : ''}`}
                   // pointerdown evita que el input pierda el foco antes de elegir.
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => elegir(o.valor)}

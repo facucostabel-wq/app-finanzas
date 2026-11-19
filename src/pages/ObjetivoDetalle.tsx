@@ -10,6 +10,7 @@ import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, parseMonto } from '../lib/format'
 import { calcularPlan, calcularProgreso, estaDestinada } from '../lib/objetivos'
+import { Aviso, AvisoFondosCuenta } from '../lib/avisos'
 import { nombreCortoMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
@@ -95,6 +96,22 @@ export default function ObjetivoDetalle() {
   const opcionesCategoria: Opcion[] = categorias
     .filter((c) => c.tipo === 'gasto' && c.activa)
     .map((c) => ({ valor: c.id, texto: c.nombre }))
+
+  // Apartar más de lo que hay en la cuenta (descontando lo ya apartado de ahí para objetivos vigentes).
+  const avisoApartar = (() => {
+    const monto = parseMonto(montoTexto)
+    const c = ctx.cuentas.find((x) => x.id === cuentaId)
+    if (!c || !monto) return null
+    const vigentes = new Set(objetivos.filter((o) => o.estado !== 'cumplido').map((o) => o.id))
+    const yaApartado = aportes
+      .filter((a) => vigentes.has(a.objetivo_id) && a.cuenta_id === c.id && a.moneda === moneda)
+      .reduce((t, a) => t + a.monto, 0)
+    const saldo = ctx.saldos.find((x) => x.cuenta_id === c.id && x.moneda === moneda)?.monto ?? 0
+    const libre = Math.round((saldo - yaApartado) * 100) / 100
+    if (monto <= libre + 0.005) return null
+    if (libre <= 0.005) return `En ${nombreCuenta(c)} no queda plata libre en ${moneda} para apartar.`
+    return `En ${nombreCuenta(c)} quedan ${formatMonto(libre, moneda)} libres para apartar.`
+  })()
 
   function abrir(h: Hoja) {
     setError(null)
@@ -380,6 +397,10 @@ export default function ObjetivoDetalle() {
                   valor={cuentaId}
                   onCambio={setCuentaId}
                 />
+                {hoja === 'apartar' && avisoApartar && <Aviso>{avisoApartar}</Aviso>}
+                {hoja === 'comprar' && (
+                  <AvisoFondosCuenta cuentas={ctx.cuentas} cuentaId={cuentaId} moneda={moneda} monto={parseMonto(montoTexto)} fecha={fecha} verbo="con esta compra" />
+                )}
                 {hoja === 'comprar' ? (
                   <label>
                     Fecha

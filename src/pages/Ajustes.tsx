@@ -4,6 +4,8 @@ import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import Combobox from '../components/Combobox'
 import MiCuenta from '../components/MiCuenta'
+import { TriangleAlert } from 'lucide-react'
+import { Aviso } from '../lib/avisos'
 import { Oculto } from '../lib/ocultar'
 import IconoCategoria from '../components/IconoCategoria'
 import SelectorIcono from '../components/SelectorIcono'
@@ -164,6 +166,9 @@ export default function Ajustes() {
         <>
       <section className="card">
         <p className="muted chico">Bancos, billeteras, efectivo y brokers, con sus saldos y tarjetas de crédito.</p>
+        {principales.some((c) => c.tipo !== 'tarjeta' && saldos.some((x) => x.cuenta_id === c.id && x.monto < -0.005)) && (
+          <Aviso>Las cuentas con ⚠ tienen saldo negativo: revisá el saldo inicial o si falta anotar algún ingreso.</Aviso>
+        )}
         <ul className="lista">
           {principales.map((c) => {
             const hijas = cuentas.filter((x) => x.cuenta_padre_id === c.id)
@@ -172,7 +177,14 @@ export default function Ajustes() {
               <li key={c.id}>
                 <Link to={`/cuentas/${c.id}`} className={`fila cuenta-fila ${c.activa ? '' : 'inactiva'}`}>
                   <div>
-                    <div>{c.nombre}</div>
+                    <div>
+                      {c.nombre}
+                      {c.tipo !== 'tarjeta' && saldos.some((x) => x.cuenta_id === c.id && x.monto < -0.005) && (
+                        <span className="icono-alerta" title="Saldo negativo: revisá sus movimientos o el saldo inicial">
+                          <TriangleAlert size={15} strokeWidth={2.2} aria-label="Saldo negativo" />
+                        </span>
+                      )}
+                    </div>
                     <div className="muted chico">
                       {TEXTO_TIPO_CUENTA[c.tipo]}
                       {hijas.length > 0 && `, con ${hijas.map((h) => h.nombre).join(' y ')}`}

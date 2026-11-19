@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import IconoCategoria from '../components/IconoCategoria'
 import BottomNav from '../components/BottomNav'
+import { TriangleAlert } from 'lucide-react'
+import { Aviso } from '../lib/avisos'
 import { BotonOjo, Oculto } from '../lib/ocultar'
 import BotonMenu from '../components/BotonMenu'
 import TarjetaObjetivo from '../components/TarjetaObjetivo'
@@ -110,6 +112,9 @@ export default function Home() {
     [...netoPorMoneda.entries()].filter(([, v]) => Math.abs(v) >= 0.01).map(([m]) => m),
     favoritas,
   )
+  const negativas = porCuenta.filter(
+    (x) => x.cuenta.tipo !== 'tarjeta' && x.cuenta.tipo !== 'grupo' && x.saldos.some((y) => y.monto < -0.005),
+  )
   const hayCuotasFuturas = cuentas.some((c) => c.tipo === 'tarjeta' && futurasDe(c.id).length > 0)
 
   // Disponible: la moneda principal grande, el resto chico debajo.
@@ -212,7 +217,13 @@ export default function Home() {
                               to={cuenta.tipo === 'grupo' && cuenta.grupo_id ? `/grupos/${cuenta.grupo_id}` : `/movimientos?cuenta=${cuenta.id}`}
                               className="cuenta-link"
                             >
-                              {nombreCuenta(cuenta)} <span aria-hidden="true">›</span>
+                              {nombreCuenta(cuenta)}
+                              {cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' && saldos.some((x) => x.monto < -0.005) && (
+                                <span className="icono-alerta" title="Saldo negativo: revisá sus movimientos o el saldo inicial">
+                                  <TriangleAlert size={15} strokeWidth={2.2} aria-label="Saldo negativo" />
+                                </span>
+                              )}{' '}
+                              <span aria-hidden="true">›</span>
                             </Link>
                             {saldos.length <= 1 && (
                               <span className="cuentas-montos">
@@ -253,6 +264,13 @@ export default function Home() {
                     </ul>
                   </div>
                 ))}
+                {negativas.length > 0 && (
+                  <Aviso>
+                    {negativas.map((x) => nombreCuenta(x.cuenta)).join(', ')} {negativas.length === 1 ? 'tiene' : 'tienen'} saldo
+                    negativo: suele ser un saldo inicial mal cargado o un ingreso sin anotar. Tocá la cuenta para revisar sus
+                    movimientos.
+                  </Aviso>
+                )}
                 {monedasNeto.length > 0 && (
                   <div className="neto-cuentas">
                     <div className="neto-fila">
