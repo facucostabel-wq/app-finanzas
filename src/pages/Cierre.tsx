@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
-import { convertir, idCripto, traerCripto, traerTipos, type Cierre as CierreT, type Tipos } from '../lib/cotizaciones'
+import { convertir, traerTipos, type Cierre as CierreT, type Tipos } from '../lib/cotizaciones'
 import { totalesPorMoneda, useMovimientosDelMes, useSaldosCuentas } from '../lib/datos'
 import { formatCantidad, formatMonto, formatPrecio, mesActual, montoAEditable, moverMes, nombreMes, parseNumero, rangoMes, type Moneda } from '../lib/format'
 import { calcularProgreso } from '../lib/objetivos'
@@ -62,8 +62,6 @@ export default function Cierre() {
     setTrayendo(true)
     setAviso(null)
     const t = await traerTipos(monedas, mes, esActual)
-    const ids = aValuar.map((x) => (x.activo_id ? idCripto(nombreActivo.get(x.activo_id) ?? '') : null)).filter(Boolean) as string[]
-    const cripto = esActual ? await traerCripto(ids) : new Map<string, number>()
     setTiposTxt((prev) => {
       const n = { ...prev }
       for (const m of monedas) {
@@ -76,16 +74,12 @@ export default function Cierre() {
       const n = { ...prev }
       for (const x of aValuar) {
         const clave = x.activo_id ?? `cat:${x.categoria_id}`
-        const id = x.activo_id ? idCripto(nombreActivo.get(x.activo_id) ?? '') : null
-        const usd = id ? cripto.get(id) : undefined
-        const precio = usd !== undefined ? convertir(usd, 'USD', x.moneda, t) : null
-        if (precio) n[clave] = { v: montoAEditable(Math.round(precio * 100) / 100), f: 'auto' }
-        else if (!n[clave]?.v && base?.precios.get(clave)) n[clave] = { v: montoAEditable(base.precios.get(clave)!.precio), f: 'manual' }
+        if (!n[clave]?.v && base?.precios.get(clave)) n[clave] = { v: montoAEditable(base.precios.get(clave)!.precio), f: 'manual' }
       }
       return n
     })
     if (!t.get('USD')) setAviso('No pude traer el dólar MEP automáticamente. Cargalo a mano.')
-    else if (!esActual) setAviso('Cotizaciones del último día hábil del mes. Las cripto no tienen histórico: cargalas a mano.')
+    else if (!esActual) setAviso('Cotizaciones del último día hábil del mes.')
     setTrayendo(false)
   }
 
@@ -278,8 +272,8 @@ export default function Cierre() {
         <section className="card">
           <h2>Precio de tus inversiones</h2>
           <p className="muted chico">
-            Precio por unidad al cierre (lo ves en tu broker). Te sugerimos el del cierre anterior; las cripto se traen
-            solas.
+            Precio por unidad al cierre (lo ves en tu broker). Lo cargás vos, de donde
+            tomes el dato; te dejamos el del cierre anterior como referencia.
           </p>
           <ul className="lista">
             {aValuar.map((t) => {

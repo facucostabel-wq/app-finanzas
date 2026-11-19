@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { RefreshCw } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import IconoCategoria from '../components/IconoCategoria'
@@ -14,14 +13,14 @@ const usd = (n: number) => formatMonto(Math.round(n), 'USD')
 const pct = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1).replace('.', ',')}%`
 
 export function textoFuente(p: Posicion): string {
-  if (p.fuente === 'auto') return 'precio automático'
+  if (p.fuente === 'auto') return 'cotización de la moneda'
   if (p.fuente === 'manual') return `actualizado ${haceCuanto(p.valorFecha)}`
   if (p.fuente === 'cierre') return 'al último cierre'
   return 'sin actualizar'
 }
 
 export default function Inversiones() {
-  const { posiciones, totales, categorias, tipos, loading, error, hayMepHistorico, refrescarCripto } = useCartera()
+  const { posiciones, totales, categorias, tipos, loading, error, hayMepHistorico } = useCartera()
   const [verVendidas, setVerVendidas] = useState(false)
   const nombreCat = new Map(categorias.map((c) => [c.id, c]))
   const orden = new Map(categorias.map((c, i) => [c.id, i]))
@@ -46,9 +45,6 @@ export default function Inversiones() {
           <h1>Inversiones</h1>
         </div>
         <div className="topbar-der">
-          <button className="boton-icono" onClick={refrescarCripto} aria-label="Actualizar precios automáticos">
-            <RefreshCw size={18} />
-          </button>
           <BotonOjo className="boton-icono" />
         </div>
       </header>
@@ -191,8 +187,9 @@ export default function Inversiones() {
 
           <p className="muted chico">
             Todo en dólares MEP. Lo que invertiste en pesos se pasa a dólares con el MEP del día de cada compra
-            {hayMepHistorico ? '' : ' (sin conexión a la serie histórica, por ahora con el dólar de hoy)'}. Las cripto y las
-            monedas se actualizan solas; el resto, tocando cada inversión o con el cierre de mes.
+            {hayMepHistorico ? '' : ' (sin conexión a la serie histórica, por ahora con el dólar de hoy)'}. Los precios los
+            cargás vos en el cierre de mes (o tocando una inversión si querés actualizarla antes); solo las monedas
+            extranjeras siguen su cotización.
           </p>
         </>
       )}

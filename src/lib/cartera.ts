@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { convertir, idCripto, type Cierre, type Tipos } from './cotizaciones'
+import { convertir, type Cierre, type Tipos } from './cotizaciones'
 import type { Activo, Categoria, Movimiento } from './datos'
 import type { Moneda } from './format'
 import { supabase } from './supabase'
@@ -69,7 +69,6 @@ type Contexto = {
   categorias: Categoria[]
   tipos: Tipos
   mepEn: ((fecha: string) => number | null) | null
-  cripto: Map<string, number>
   valuaciones: Valuacion[]
   ultimoCierre?: Cierre
 }
@@ -84,8 +83,9 @@ const finDeMes = (mes: string) => {
 
 /**
  * Posiciones de la cartera en dólares. El costo usa el dólar MEP del día de cada
- * movimiento; el valor actual sale de (en este orden): precio automático (cripto y
- * monedas), el valor más reciente entre lo cargado a mano y el último cierre, o el costo.
+ * movimiento; el valor actual sale de (en este orden): la cotización de la moneda (solo
+ * monedas extranjeras), el valor más reciente entre lo cargado a mano y el último cierre,
+ * o el costo. Los precios de las inversiones los carga el usuario, nunca se traen solos.
  */
 export function armarCartera(movs: Movimiento[], ctx: Contexto): Posicion[] {
   const { tipos, mepEn } = ctx
@@ -169,19 +169,13 @@ export function armarCartera(movs: Movimiento[], ctx: Contexto): Posicion[] {
     p.pppUsd = p.cantidad > 0 ? p.costoUsd / p.cantidad : null
     let valor: number | null = null
 
-    // 1) Automático: monedas extranjeras y cripto conocidas.
+    // 1) Monedas extranjeras: valen lo que vale la moneda.
     if (p.divisa && p.cantidad > 0) {
       valor = convertir(p.cantidad, p.divisa, 'USD', tipos)
       if (valor !== null) {
         p.fuente = 'auto'
         p.precioUsd = valor / p.cantidad
       }
-    }
-    const id = p.activo_id ? idCripto(p.nombre) : null
-    if (valor === null && id && ctx.cripto.get(id) && p.cantidad > 0) {
-      p.precioUsd = ctx.cripto.get(id)!
-      valor = p.cantidad * p.precioUsd
-      p.fuente = 'auto'
     }
 
     // 2) El valor más reciente entre lo cargado a mano y el último cierre.
