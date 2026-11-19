@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { trasDemo } from '../lib/demo'
 import { errorDeLink, supabase } from '../lib/supabase'
 
 type Mode = 'ingresar' | 'registrarse' | 'recuperar'
@@ -28,7 +29,9 @@ export const REGLAS: { texto: string; cumple: (p: string) => boolean }[] = [
 
 export default function Login() {
   const [params] = useSearchParams()
-  const [mode, setMode] = useState<Mode>(params.has('recuperar') ? 'recuperar' : 'ingresar')
+  const [mode, setMode] = useState<Mode>(() =>
+    params.has('recuperar') ? 'recuperar' : params.has('registrarse') || trasDemo() === 'registrarse' ? 'registrarse' : 'ingresar',
+  )
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,7 +41,9 @@ export default function Login() {
   const [error, setError] = useState<string | null>(
     errorDeLink ? 'El link del email venció o ya se usó. Pedí uno nuevo.' : null,
   )
-  const [info, setInfo] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(
+    params.has('demo_terminada') ? 'La demo terminó y se borró. Si te gustó, creá tu cuenta.' : null,
+  )
   const [emailEnviado, setEmailEnviado] = useState<string | null>(null)
 
   const registrarse = mode === 'registrarse'
@@ -253,6 +258,16 @@ export default function Login() {
           </button>
         )}
       </form>
+
+      {!recuperar && (
+        <section className="demo-invitacion">
+          <p className="muted chico">¿Querés verla antes de crear tu cuenta?</p>
+          <Link to="/demo" className="boton-demo">
+            Probar la demo
+          </Link>
+          <p className="muted chico">Con datos de ejemplo, sin email ni contraseña. Se borra sola a las 24 horas.</p>
+        </section>
+      )}
     </main>
   )
 }

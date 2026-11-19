@@ -105,6 +105,10 @@ export default function Privacidad() {
         solas a los 30 días. En los grupos compartidos, los gastos y pagos siguen existiendo para los demás miembros y
         vos pasás a figurar como invitado, solo con tu nombre.
       </p>
+      <p>
+        La demo no pide email ni ningún dato personal: usa datos de ejemplo y todo lo que se cargue en ella se borra a
+        las 24 horas, o antes si salís de la demo.
+      </p>
 
       <h2>Tus derechos</h2>
       <ul>

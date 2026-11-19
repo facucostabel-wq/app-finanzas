@@ -16,6 +16,8 @@ import {
   type Pendiente,
 } from '../lib/grupos'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import { esDemo } from '../lib/demo'
 import InputNumero from '../components/InputNumero'
 import { AvisoFondosCuenta } from '../lib/avisos'
 
@@ -40,6 +42,7 @@ const guardarCat = (g: string, c: string) => {
 export default function GrupoDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const demo = esDemo(useAuth().session)
   const { grupo, miembros, gastos, divisiones, pagos, vinculos, cuentaGrupo, miMiembro, esAdmin, adminId, loading, recargar } = useGrupo(id)
   // Al abrir el grupo, sus avisos quedan como leídos.
   useEffect(() => {
@@ -113,6 +116,10 @@ export default function GrupoDetalle() {
 
   async function invitar() {
     if (!grupo) return
+    if (demo) {
+      setAviso('En la demo no se puede invitar gente: los amigos de este grupo son inventados. Con tu cuenta lo compartís por WhatsApp.')
+      return
+    }
     const link = linkInvitacion(grupo.invitacion_token)
     const texto = `Sumate al grupo "${grupo.nombre}" para dividir gastos: ${link}`
     try {

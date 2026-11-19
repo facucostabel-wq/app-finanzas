@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import Combobox from '../components/Combobox'
 import MiCuenta from '../components/MiCuenta'
+import CompartirApp from '../components/CompartirApp'
+import { esDemo, salirDeDemo } from '../lib/demo'
 import { TriangleAlert } from 'lucide-react'
 import { Aviso } from '../lib/avisos'
 import { Oculto } from '../lib/ocultar'
@@ -34,6 +36,8 @@ const TIPOS_CATEGORIA: [TipoCategoria, string][] = [
 export default function Ajustes() {
   const { seccion } = useParams()
   const { session } = useAuth()
+  const demo = esDemo(session)
+  const navigate = useNavigate()
   const { perfil, recargar: recargarPerfil } = usePerfil()
   const { categorias, recargar } = useCategorias()
   const [tipo, setTipo] = useState<TipoCategoria>('gasto')
@@ -111,8 +115,8 @@ export default function Ajustes() {
     cuentas: 'Cuentas',
     monedas: 'Monedas favoritas',
     categorias: 'Categorías',
-    notificaciones: 'Notificaciones',
-    cuenta: 'Mi cuenta',
+    // En la demo no hay notificaciones ni cuenta propia que administrar.
+    ...(demo ? {} : { notificaciones: 'Notificaciones', cuenta: 'Mi cuenta' }),
   }
   const titulo = seccion ? titulos[seccion] : undefined
 
@@ -127,23 +131,35 @@ export default function Ajustes() {
           </div>
         </header>
         {errorCuentas && <p className="error">No se pudieron cargar las cuentas: {errorCuentas}</p>}
+        {error && <p className="error">{error}</p>}
         <nav className="menu card" aria-label="Secciones de ajustes">
           <ItemMenu a="cuentas" titulo="Cuentas" detalle={principales.length === 1 ? '1 cuenta' : `${principales.length} cuentas`} icono="M3 7h18v12H3zM3 11h18M7 15h3" />
           <ItemMenu a="monedas" titulo="Monedas favoritas" detalle={favoritas.join(', ')} icono="M12 3v18M16.5 7.5c0-1.9-2-3-4.5-3s-4.5 1.2-4.5 3.2c0 4.6 9 2.3 9 7 0 2-2 3.3-4.5 3.3s-4.5-1.1-4.5-3" />
           <ItemMenu a="categorias" titulo="Categorías" detalle={`${activas} activas`} icono="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
+          {!demo && (
+            <>
           <ItemMenu a="notificaciones" titulo="Notificaciones" detalle="Avisos de tus grupos" icono="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />
           <ItemMenu a="cuenta" titulo="Mi cuenta" detalle={session?.user.email ?? ''} icono="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6" />
+            </>
+          )}
         </nav>
         <CompartirApp />
         <button
           className="secundario boton-ancho"
           onClick={async () => {
+            if (demo) {
+              if (!window.confirm('Al salir se borra todo lo de la demo. ¿Salir?')) return
+              const err = await salirDeDemo()
+              if (err) return setError(`No se pudo salir de la demo: ${err}`)
+              navigate('/ingresar', { replace: true })
+              return
+            }
             // Este dispositivo deja de recibir avisos de esta cuenta.
             await desactivarPush()
             await supabase.auth.signOut()
           }}
         >
-          Cerrar sesión
+          {demo ? 'Salir de la demo' : 'Cerrar sesión'}
         </button>
         <BottomNav />
       </main>
@@ -458,45 +474,5 @@ function PreferenciasAvisos() {
       )}
       {error && <p className="error">{error}</p>}
     </section>
-  )
-}
-
-/** Comparte el link de la app (menú de compartir del celular o, si no hay, copia el link). */
-function CompartirApp() {
-  const [copiado, setCopiado] = useState(false)
-  const url = window.location.origin
-  async function compartir() {
-    const datos = {
-      title: 'Finanzas',
-      text: 'Te paso la app que uso para anotar gastos e inversiones y dividir gastos con amigos:',
-      url,
-    }
-    try {
-      if (navigator.share) return await navigator.share(datos)
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return
-    }
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    } catch {
-      window.prompt('Copiá el link de la app:', url)
-    }
-  }
-  return (
-    <>
-      <button className="primary boton-ancho compartir-app" onClick={compartir}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />
-        </svg>
-        Compartir la app
-      </button>
-      {copiado && (
-        <p className="info chico" role="status">
-          Link copiado: {url}
-        </p>
-      )}
-    </>
   )
 }

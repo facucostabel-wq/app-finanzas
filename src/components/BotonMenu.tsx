@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
   CalendarCheck,
@@ -7,13 +7,14 @@ import {
   LogOut,
   Menu,
   Settings,
-  Share2,
   Target,
   TrendingUp,
   Users,
   X,
 } from 'lucide-react'
-import { compartirApp } from '../lib/compartir'
+import CompartirApp from './CompartirApp'
+import { useAuth } from '../lib/auth'
+import { esDemo, salirDeDemo } from '../lib/demo'
 import { desactivarPush } from '../lib/push'
 import { supabase } from '../lib/supabase'
 
@@ -30,7 +31,9 @@ const SECCIONES = [
 /** Botón ☰ con el menú lateral de todas las secciones. */
 export default function BotonMenu() {
   const [abierto, setAbierto] = useState(false)
-  const [aviso, setAviso] = useState<string | null>(null)
+  const { session } = useAuth()
+  const demo = esDemo(session)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!abierto) return
@@ -64,26 +67,23 @@ export default function BotonMenu() {
               </NavLink>
             ))}
             <hr />
+            <CompartirApp variante="menu" />
             <button
               className="menu-enlace"
               onClick={async () => {
-                const r = await compartirApp()
-                if (r === 'copiado') setAviso('Link copiado')
-              }}
-            >
-              <Share2 size={20} strokeWidth={1.8} aria-hidden="true" />
-              Compartir la app
-            </button>
-            {aviso && <p className="info chico menu-aviso">{aviso}</p>}
-            <button
-              className="menu-enlace"
-              onClick={async () => {
+                if (demo) {
+                  if (!window.confirm('Al salir se borra todo lo de la demo. ¿Salir?')) return
+                  const err = await salirDeDemo()
+                  if (err) return window.alert(`No se pudo salir de la demo: ${err}`)
+                  navigate('/ingresar', { replace: true })
+                  return
+                }
                 await desactivarPush()
                 await supabase.auth.signOut()
               }}
             >
               <LogOut size={20} strokeWidth={1.8} aria-hidden="true" />
-              Cerrar sesión
+              {demo ? 'Salir de la demo' : 'Cerrar sesión'}
             </button>
           </nav>
         </div>

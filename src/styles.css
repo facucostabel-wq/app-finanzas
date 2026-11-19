@@ -769,3 +769,36 @@ a.boton-icono { text-decoration: none; }
 .pildora.baja { color: var(--error); background: rgb(255 122 107 / 0.12); }
 .sin-valor { color: var(--aviso); }
 .bloque-linea { display: block; }
+
+/* ===== Demo ===== */
+.franja-demo {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; box-sizing: border-box; width: 100%;
+  max-width: 480px; margin: 0 auto;
+  padding: 8px 14px; padding-top: max(8px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  border-bottom: 1px solid var(--accent); font-size: 0.82rem;
+}
+.franja-demo strong { color: var(--accent); }
+.franja-demo button {
+  background: var(--accent); color: var(--accent-text); border: 0; border-radius: 999px;
+  padding: 6px 12px; font-weight: 700; font-size: 0.8rem; white-space: nowrap;
+}
+.franja-demo .error { width: 100%; margin: 0; }
+.demo-invitacion { text-align: center; margin-top: 18px; display: grid; gap: 8px; justify-items: center; }
+.demo-invitacion p { margin: 0; }
+.boton-demo {
+  display: inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 700;
+  border: 1.5px solid var(--accent); color: var(--accent); text-decoration: none;
+}
+.compartir-opciones { display: grid; gap: 6px; margin: 4px 0 10px; }
+.compartir-opciones button {
+  display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+}
+.compartir-opciones button svg { color: var(--accent); flex-shrink: 0; }
+.compartir-opciones span { display: grid; gap: 2px; }
+.compartir-opciones small { color: var(--muted); font-size: 0.78rem; }
+.compartir.menu .compartir-opciones { margin: 2px 8px 8px; }
+.compartir.menu .info { margin: 0 12px 8px; }

@@ -1,7 +1,9 @@
 import type React from 'react'
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import FranjaDemo from './components/FranjaDemo'
 import Tutorial from './components/Tutorial'
+import { esDemo, horasRestantes } from './lib/demo'
 import { sincronizarPush } from './lib/push'
 import { usePilaNavegacion } from './lib/pila'
 import { useAuth } from './lib/auth'
@@ -14,6 +16,7 @@ import GrupoDetalle from './pages/GrupoDetalle'
 import Grupos from './pages/Grupos'
 import Unirse from './pages/Unirse'
 import CuentaForm from './pages/CuentaForm'
+import Demo from './pages/Demo'
 import Home from './pages/Home'
 import Inversiones from './pages/Inversiones'
 import Login from './pages/Login'
@@ -48,9 +51,23 @@ export default function App() {
 
   // Si este dispositivo tenía avisos activos, quedan a nombre de la cuenta que entró.
   const uid = session?.user.id
+  const demo = esDemo(session)
   useEffect(() => {
-    if (uid) sincronizarPush()
-  }, [uid])
+    if (uid && !demo) sincronizarPush()
+  }, [uid, demo])
+
+  // La demo dura 24 horas: después se cierra (y el servidor la borra con todo).
+  useEffect(() => {
+    if (!demo) return
+    const revisar = () => {
+      if (horasRestantes(session) > 0) return
+      supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+      navigate('/ingresar?demo_terminada', { replace: true })
+    }
+    revisar()
+    const t = setInterval(revisar, 60_000)
+    return () => clearInterval(t)
+  }, [demo, session, navigate])
 
   // Si alguien abre un link (ej. invitación a un grupo) sin estar logueado, se guarda
   // adónde iba y se lo lleva ahí después de ingresar.
@@ -93,12 +110,14 @@ export default function App() {
   const protegida = (pagina: React.ReactNode) =>
     !session ? <Navigate to="/ingresar" replace /> : faltaConsentimiento ? <Consentimiento /> : pagina
 
-  const verTutorial = session && !faltaConsentimiento && !location.pathname.startsWith('/unirse/') && location.pathname !== '/privacidad' && location.pathname !== '/nueva-clave'
+  const verTutorial = session && !faltaConsentimiento && !location.pathname.startsWith('/unirse/') && location.pathname !== '/privacidad' && location.pathname !== '/nueva-clave' && location.pathname !== '/demo'
 
   return (
     <>
     {verTutorial && <Tutorial key={session.user.id} uid={session.user.id} />}
+    {demo && location.pathname !== '/demo' && !faltaConsentimiento && <FranjaDemo />}
     <Routes>
+      <Route path="/demo" element={<Demo />} />
       <Route path="/privacidad" element={<Privacidad />} />
       <Route path="/nueva-clave" element={<NuevaClave />} />
       <Route path="/ingresar" element={session ? <Navigate to="/" replace /> : <Login />} />

@@ -11,9 +11,12 @@ import { mesActual } from '../lib/format'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 import AvisoPush from '../components/AvisoPush'
+import { useAuth } from '../lib/auth'
+import { esDemo } from '../lib/demo'
 import { marcarLeidas, useNoLeidas } from '../lib/push'
 
 export default function Grupos() {
+  const demo = esDemo(useAuth().session)
   const navigate = useNavigate()
   const { perfil } = usePerfil()
   const { grupos, loading } = useGrupos()
@@ -81,7 +84,7 @@ export default function Grupos() {
         </section>
       )}
 
-      <AvisoPush compacto />
+      {!demo && <AvisoPush compacto />}
 
       {loading ? (
         <p className="muted">Cargando…</p>
