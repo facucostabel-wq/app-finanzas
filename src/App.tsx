@@ -15,6 +15,7 @@ import GastoGrupoForm from './pages/GastoGrupoForm'
 import GrupoDetalle from './pages/GrupoDetalle'
 import Grupos from './pages/Grupos'
 import Unirse from './pages/Unirse'
+import Bienvenida from './pages/Bienvenida'
 import CuentaForm from './pages/CuentaForm'
 import Demo from './pages/Demo'
 import Home from './pages/Home'
@@ -118,6 +119,7 @@ export default function App() {
     {demo && location.pathname !== '/demo' && !faltaConsentimiento && <FranjaDemo />}
     <Routes>
       <Route path="/demo" element={<Demo />} />
+      <Route path="/bienvenida" element={session ? <Navigate to="/" replace /> : <Bienvenida />} />
       <Route path="/privacidad" element={<Privacidad />} />
       <Route path="/nueva-clave" element={<NuevaClave />} />
       <Route path="/ingresar" element={session ? <Navigate to="/" replace /> : <Login />} />

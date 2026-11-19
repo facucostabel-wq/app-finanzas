@@ -71,6 +71,5 @@ export async function salirDeDemo(despues: 'registrarse' | 'ingresar' = 'ingresa
   return null
 }
 
-/** Links para compartir la app. */
-export const linkDemo = () => `${window.location.origin}/demo`
-export const linkRegistro = () => `${window.location.origin}/ingresar?registrarse`
+/** Link para compartir la app: abre la página para elegir entre la demo y crear cuenta. */
+export const linkCompartir = () => `${window.location.origin}/bienvenida`

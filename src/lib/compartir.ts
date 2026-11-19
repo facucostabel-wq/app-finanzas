@@ -1,18 +1,15 @@
-import { linkDemo, linkRegistro } from './demo'
+import { linkCompartir } from './demo'
 
-export type QueCompartir = 'demo' | 'registro'
-
-const TEXTOS: Record<QueCompartir, string> = {
-  demo: 'Probá la app que uso para anotar gastos e inversiones y dividir gastos con amigos. Es una demo con datos de ejemplo, no hace falta crear cuenta:',
-  registro: 'Te paso la app que uso para anotar gastos e inversiones y dividir gastos con amigos. Creá tu cuenta acá:',
-}
-
-/** Comparte el link de la demo o el de crear cuenta. Devuelve 'copiado' si no hubo menú de compartir y se copió el link. */
-export async function compartirApp(que: QueCompartir): Promise<'compartido' | 'copiado' | 'cancelado' | 'error'> {
-  const url = que === 'demo' ? linkDemo() : linkRegistro()
+/** Comparte el link de la app (abre la página para elegir demo o crear cuenta). Devuelve 'copiado' si no hubo menú de compartir y se copió el link. */
+export async function compartirApp(): Promise<'compartido' | 'copiado' | 'cancelado' | 'error'> {
+  const url = linkCompartir()
   try {
     if (navigator.share) {
-      await navigator.share({ title: 'Finanzas', text: TEXTOS[que], url })
+      await navigator.share({
+        title: 'Finanzas',
+        text: 'Te paso la app que uso para anotar gastos e inversiones y dividir gastos con amigos. Podés probar la demo sin crear cuenta:',
+        url,
+      })
       return 'compartido'
     }
   } catch (e) {

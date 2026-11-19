@@ -791,14 +791,19 @@ a.boton-icono { text-decoration: none; }
   display: inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 700;
   border: 1.5px solid var(--accent); color: var(--accent); text-decoration: none;
 }
-.compartir-opciones { display: grid; gap: 6px; margin: 4px 0 10px; }
-.compartir-opciones button {
-  display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
-  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text);
-}
-.compartir-opciones button svg { color: var(--accent); flex-shrink: 0; }
-.compartir-opciones span { display: grid; gap: 2px; }
-.compartir-opciones small { color: var(--muted); font-size: 0.78rem; }
-.compartir.menu .compartir-opciones { margin: 2px 8px 8px; }
 .compartir.menu .info { margin: 0 12px 8px; }
+
+.bienvenida { display: flex; flex-direction: column; justify-content: center; }
+.bienvenida-opciones { display: grid; gap: 12px; margin-top: 8px; }
+.bienvenida-opcion {
+  display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none;
+}
+.bienvenida-opcion svg { color: var(--accent); flex-shrink: 0; }
+.bienvenida-opcion span { display: grid; gap: 4px; }
+.bienvenida-opcion strong { font-size: 1.05rem; }
+.bienvenida-opcion small { color: var(--muted); font-size: 0.84rem; line-height: 1.35; }
+.bienvenida-opcion.principal { background: linear-gradient(135deg, var(--boton-1), var(--boton-2)); border: 0; color: var(--accent-text); }
+.bienvenida-opcion.principal svg, .bienvenida-opcion.principal small { color: var(--accent-text); }
+.bienvenida-opcion.principal small { opacity: 0.8; }
+.bienvenida-ingresar { text-align: center; margin-top: 20px; }
