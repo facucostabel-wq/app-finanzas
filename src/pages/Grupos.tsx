@@ -10,7 +10,8 @@ import { useCuentas, useSaldosCuentas } from '../lib/datos'
 import { mesActual } from '../lib/format'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
-import AvisoPush from '../components/AvisoPush'
+import { ChevronRight, Plus } from 'lucide-react'
+import CampanaPush from '../components/CampanaPush'
 import { useAuth } from '../lib/auth'
 import { esDemo } from '../lib/demo'
 import { marcarLeidas, useNoLeidas } from '../lib/push'
@@ -52,6 +53,7 @@ export default function Grupos() {
           <BotonMenu />
           <h1>Grupos</h1>
         </div>
+        {!demo && <CampanaPush />}
       </header>
       <p className="muted chico">
         Gastos compartidos con amigos, pareja o viajes. Cada uno ve lo del grupo; tus finanzas personales siguen siendo
@@ -84,40 +86,8 @@ export default function Grupos() {
         </section>
       )}
 
-      {!demo && <AvisoPush compacto />}
-
-      {loading ? (
-        <p className="muted">Cargando…</p>
-      ) : (
-        <ul className="lista card">
-          {grupos.map((g) => {
-            const pos = posicion(g.id)
-            return (
-              <li key={g.id}>
-                <Link to={`/grupos/${g.id}`} className="fila">
-                  <span>{g.nombre}</span>
-                  <span className="cuentas-montos chico">
-                    {pos.length === 0 ? (
-                      <span className="muted">Al día</span>
-                    ) : (
-                      pos.map((s) => (
-                        <span key={s.moneda} className={s.monto < 0 ? 'negativo' : 'positivo'}>
-                          {s.monto < 0 ? 'Debés ' : 'Te deben '}
-                          {formatMonto(Math.abs(Math.round(s.monto * 100) / 100), s.moneda)}
-                        </span>
-                      ))
-                    )}
-                  </span>
-                </Link>
-              </li>
-            )
-          })}
-          {grupos.length === 0 && <li className="muted fila">Todavía no estás en ningún grupo.</li>}
-        </ul>
-      )}
-
       {creando ? (
-        <section className="card formulario" style={{ marginTop: 14 }}>
+        <section className="card formulario nuevo-grupo-form">
           <label>
             Nombre del grupo
             <input value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={40} placeholder="Ej.: Viaje a Bariloche" autoFocus />
@@ -137,13 +107,63 @@ export default function Grupos() {
           </button>
         </section>
       ) : (
-        <button className="primary boton-ancho" onClick={() => setCreando(true)}>
-          + Nuevo grupo
-        </button>
+        <div className="grupos-cabecera">
+          <h2>{grupos.length > 0 ? `Tus grupos (${grupos.length})` : 'Tus grupos'}</h2>
+          <button className="boton-contorno" onClick={() => setCreando(true)}>
+            <Plus size={16} aria-hidden="true" />
+            Nuevo grupo
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="muted">Cargando…</p>
+      ) : grupos.length === 0 ? (
+        <p className="muted card">Todavía no estás en ningún grupo. Creá uno o pedile a un amigo el link de invitación.</p>
+      ) : (
+        <ul className="grupos-lista">
+          {grupos.map((g) => {
+            const pos = posicion(g.id)
+            return (
+              <li key={g.id}>
+                <Link to={`/grupos/${g.id}`} className="grupo-tarjeta">
+                  <span className="grupo-inicial" aria-hidden="true">
+                    {g.nombre.trim().charAt(0).toUpperCase()}
+                  </span>
+                  <span className="grupo-info">
+                    <span className="grupo-nombre">{g.nombre}</span>
+                    <span className="muted chico grupo-miembros">{conQuien(g.otros)}</span>
+                    <span className="grupo-saldo">
+                      {pos.length === 0 ? (
+                        <span className="muted">Al día</span>
+                      ) : (
+                        pos.map((s) => (
+                          <span key={s.moneda} className={s.monto < 0 ? 'negativo' : 'positivo'}>
+                            {s.monto < 0 ? 'Debés ' : 'Te deben '}
+                            {formatMonto(Math.abs(Math.round(s.monto * 100) / 100), s.moneda)}
+                          </span>
+                        ))
+                      )}
+                    </span>
+                  </span>
+                  <ChevronRight size={20} className="muted" aria-hidden="true" />
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
       )}
       <BottomNav />
     </main>
   )
+}
+
+/** "Con Juli, Tomi y Caro" (o "Solo vos"). */
+function conQuien(otros: string[]) {
+  if (otros.length === 0) return 'Solo vos por ahora'
+  if (otros.length === 1) return `Con ${otros[0]}`
+  if (otros.length <= 3) return `Con ${otros.slice(0, -1).join(', ')} y ${otros[otros.length - 1]}`
+  return `Con ${otros.slice(0, 2).join(', ')} y ${otros.length - 2} más`
 }
 
 function hace(fecha: string) {

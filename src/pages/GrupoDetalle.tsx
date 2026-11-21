@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
 import { marcarLeidas } from '../lib/push'
 import Combobox, { type Opcion } from '../components/Combobox'
 import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas, type Cuenta } from '../lib/datos'
@@ -55,6 +56,7 @@ export default function GrupoDetalle() {
   const [error, setError] = useState<string | null>(null)
   const [saldando, setSaldando] = useState<Deuda | null>(null)
   const [verMiembros, setVerMiembros] = useState(false)
+  const [verPendientes, setVerPendientes] = useState(false)
 
   const [uniendo, setUniendo] = useState<string | null>(null)
   const [unirCon, setUnirCon] = useState<string | null>(null)
@@ -255,6 +257,38 @@ export default function GrupoDetalle() {
         )}
       </section>
 
+      <Link to={`/grupos/${grupo.id}/gasto/nuevo`} className="primary boton boton-ancho cargar-gasto-grupo">
+        + Cargar gasto del grupo
+      </Link>
+
+      {/* Pendientes de registrar en mis finanzas: fila cerrada, se despliega al tocarla */}
+      {pendientes.length > 0 && cuentaGrupo && (
+        <section className={`bloque pendientes ${verPendientes ? 'abierto' : 'cerrado'}`}>
+          <button className="pendientes-fila" onClick={() => setVerPendientes((v) => !v)} aria-expanded={verPendientes}>
+            <span className="pendientes-contador">{pendientes.length}</span>
+            <span>
+              Para registrar en tus finanzas
+              <small className="muted">Lo cargaron otros; confirmalo cuando tengas tiempo</small>
+            </span>
+            <ChevronDown size={18} className="pendientes-flecha" aria-hidden="true" />
+          </button>
+          {verPendientes &&
+            pendientes.map((p) => (
+              <RegistrarPendiente
+                key={p.tipo === 'gasto' ? p.gasto.id : p.pago.id}
+                pendiente={p}
+                grupoId={grupo.id}
+                nombre={nombre}
+                cuentaGrupo={cuentaGrupo}
+                opcionesCategoria={opcionesCategoria}
+                opcionesCuenta={opcionesCuenta}
+                cuentasPropias={cuentas}
+                onListo={recargar}
+              />
+            ))}
+        </section>
+      )}
+
       {/* Quién le paga a quién */}
       {deudas.length > 0 && (
         <section className="bloque">
@@ -296,31 +330,6 @@ export default function GrupoDetalle() {
           onCancelar={() => setSaldando(null)}
         />
       )}
-
-      {/* Pendientes de registrar en mis finanzas */}
-      {pendientes.length > 0 && cuentaGrupo && (
-        <section className="bloque pendientes">
-          <h2>Para registrar en tus finanzas</h2>
-          <p className="muted chico">Lo cargó otro miembro. Confirmalo para que impacte en tus gastos y saldos.</p>
-          {pendientes.map((p) => (
-            <RegistrarPendiente
-              key={p.tipo === 'gasto' ? p.gasto.id : p.pago.id}
-              pendiente={p}
-              grupoId={grupo.id}
-              nombre={nombre}
-              cuentaGrupo={cuentaGrupo}
-              opcionesCategoria={opcionesCategoria}
-              opcionesCuenta={opcionesCuenta}
-              cuentasPropias={cuentas}
-              onListo={recargar}
-            />
-          ))}
-        </section>
-      )}
-
-      <Link to={`/grupos/${grupo.id}/gasto/nuevo`} className="primary boton boton-ancho">
-        + Cargar gasto del grupo
-      </Link>
 
       {/* Actividad */}
       <section className="bloque-plano" style={{ marginTop: 24 }}>

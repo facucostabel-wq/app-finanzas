@@ -42,17 +42,30 @@ const num = <T extends { monto: unknown }>(x: T) => ({ ...x, monto: Number(x.mon
 /** Mis grupos, con mi id de miembro en cada uno. */
 export function useGrupos() {
   const { session } = useAuth()
-  const [grupos, setGrupos] = useState<(Grupo & { miMiembro: string })[]>([])
+  const [grupos, setGrupos] = useState<(Grupo & { miMiembro: string; otros: string[] })[]>([])
   const [loading, setLoading] = useState(true)
   const recargar = useCallback(async () => {
     const uid = session?.user.id
     if (!uid) return
+    const traerMiembros = async () => {
+      // Todos los miembros de mis grupos (la seguridad de la base solo deja ver los de grupos donde estoy).
+      const r = await supabase.from('grupo_miembros').select('id, grupo_id, usuario_id, nombre, removido_at')
+      if (r.error?.code !== '42703') return r
+      return supabase.from('grupo_miembros').select('id, grupo_id, usuario_id, nombre')
+    }
     const [{ data: gs }, { data: ms }] = await Promise.all([
       supabase.from('grupos').select('id, nombre, moneda, invitacion_token, creado_por').order('creado_at'),
-      supabase.from('grupo_miembros').select('id, grupo_id').eq('usuario_id', uid),
+      traerMiembros(),
     ])
-    const mio = new Map((ms ?? []).map((m) => [m.grupo_id as string, m.id as string]))
-    setGrupos(((gs ?? []) as Grupo[]).map((g) => ({ ...g, miMiembro: mio.get(g.id) ?? '' })))
+    const miembros = (ms ?? []) as Miembro[]
+    const mio = new Map(miembros.filter((m) => m.usuario_id === uid).map((m) => [m.grupo_id, m.id]))
+    setGrupos(
+      ((gs ?? []) as Grupo[]).map((g) => ({
+        ...g,
+        miMiembro: mio.get(g.id) ?? '',
+        otros: miembros.filter((m) => m.grupo_id === g.id && m.usuario_id !== uid && !m.removido_at).map((m) => m.nombre),
+      })),
+    )
     setLoading(false)
   }, [session?.user.id])
   useEffect(() => {
