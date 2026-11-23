@@ -39,6 +39,7 @@ Cómo leerlo:
   - Mi parte de cada gasto del grupo es un gasto mío.
   - Lo que pagué de más por otros pasa a la cuenta del grupo.
   - Saldo positivo en esa cuenta = me deben; negativo = debo.
+  - En el reporte, los gastos de grupos tienen su categoría como cualquier gasto, y además se indica de qué grupo son (columna "Grupo" del detalle, columna "De eso, en grupos" en los gastos por categoría y una tabla por grupo).
   - Por privacidad, el reporte trae el nombre del grupo pero no el de sus miembros.
 - **Inversiones:**
   - Cada compra figura en la moneda en que la pagué.
