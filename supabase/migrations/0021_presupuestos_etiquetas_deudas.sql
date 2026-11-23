@@ -76,3 +76,15 @@ create policy "etiquetado: el mío" on public.etiquetado for all to authenticate
     and (movimiento_id is null or exists (select 1 from public.movimientos m where m.id = movimiento_id and m.usuario_id = (select auth.uid())))
     and (compra_id is null or exists (select 1 from public.compras_cuotas c where c.id = compra_id and c.usuario_id = (select auth.uid())))
   );
+
+-- ============================================================
+-- 3) Deudas 1 a 1
+-- ============================================================
+-- Cada persona con la que tenés una deuda es una cuenta de tipo "persona":
+--   * le prestaste      → transferencia de tu cuenta a la suya (saldo positivo = te debe)
+--   * te devolvió       → transferencia de la suya a tu cuenta
+--   * pagó algo tuyo    → gasto desde su cuenta (saldo negativo = le debés)
+-- Así nada de esto cuenta como gasto o ingreso, salvo lo que de verdad fue tuyo.
+alter table public.cuentas drop constraint if exists cuentas_tipo_check;
+alter table public.cuentas add constraint cuentas_tipo_check
+  check (tipo in ('banco', 'billetera', 'efectivo', 'tarjeta', 'broker', 'grupo', 'persona'));

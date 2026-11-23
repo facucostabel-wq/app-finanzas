@@ -134,7 +134,11 @@ export default function Movimientos() {
       ? (nombres.get(m.categoria_id) ?? '—')
       : cuenta.get(m.cuenta_destino_id ?? '')?.tipo === 'tarjeta'
         ? 'Pago de tarjeta'
-        : 'Transferencia'
+        : cuenta.get(m.cuenta_destino_id ?? '')?.tipo === 'persona'
+          ? `Le diste plata a ${cuenta.get(m.cuenta_destino_id!)!.nombre}`
+          : cuenta.get(m.cuenta_id)?.tipo === 'persona'
+            ? `${cuenta.get(m.cuenta_id)!.nombre} te dio plata`
+            : 'Transferencia'
 
   // Agrupa por día (ya vienen ordenados del más reciente al más viejo).
   const dias: { fecha: string; items: Movimiento[] }[] = []

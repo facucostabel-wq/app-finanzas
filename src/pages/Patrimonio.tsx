@@ -76,7 +76,7 @@ function Detalle({ punto, previo }: { punto: Punto; previo: Punto | null }) {
     ['Inversiones', punto.partes.inversiones],
     ['Sin invertir en brokers', punto.partes.broker],
     ['Tarjetas', punto.partes.tarjetas],
-    ['Grupos y préstamos', punto.partes.deudas],
+    ['Grupos y deudas', punto.partes.deudas],
   ]
   return (
     <section className="card patrimonio-detalle">

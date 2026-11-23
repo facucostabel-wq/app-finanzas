@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
   CalendarCheck,
+  HandCoins,
   House,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ const SECCIONES = [
   { a: '/objetivos', texto: 'Objetivos', Icono: Target },
   { a: '/grupos', texto: 'Grupos', Icono: Users },
   { a: '/inversiones', texto: 'Inversiones', Icono: TrendingUp },
+  { a: '/deudas', texto: 'Deudas', Icono: HandCoins },
   { a: '/etiquetas', texto: 'Etiquetas y eventos', Icono: Tag },
   { a: '/cierre', texto: 'Cierre de mes', Icono: CalendarCheck },
   { a: '/ia', texto: 'Análisis con IA', Icono: Sparkles },

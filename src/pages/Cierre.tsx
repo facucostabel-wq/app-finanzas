@@ -357,7 +357,7 @@ export default function Cierre() {
             {sinPrecio > 0 && `${sinPrecio === 1 ? '1 inversión' : `${sinPrecio} inversiones`} sin precio cuenta${sinPrecio === 1 ? '' : 'n'} por lo que pagaste.`}
           </p>
         )}
-        <p className="muted chico">El patrimonio descuenta lo que debés de tarjetas y suma (o resta) lo que te deben o debés en grupos y préstamos.</p>
+        <p className="muted chico">El patrimonio descuenta lo que debés de tarjetas y suma (o resta) lo que te deben o debés en grupos y deudas.</p>
       </section>
 
       {error && <p className="error">{error}</p>}

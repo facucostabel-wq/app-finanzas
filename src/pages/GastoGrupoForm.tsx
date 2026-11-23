@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Combobox, { type Opcion } from '../components/Combobox'
 import { useAuth } from '../lib/auth'
-import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas } from '../lib/datos'
+import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas, esCuentaInterna } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, parseMonto, parseNumero } from '../lib/format'
 import { dividirIguales, registrarGasto, useGrupo, type GastoGrupo } from '../lib/grupos'
 import { MONEDAS } from '../lib/monedas'
@@ -106,7 +106,7 @@ export default function GastoGrupoForm() {
 
   const opcionesCategoria: Opcion[] = categorias.filter((c) => c.tipo === 'gasto' && c.activa).map((c) => ({ valor: c.id, texto: c.nombre }))
   const opcionesCuenta: Opcion[] = cuentas
-    .filter((c) => c.activa && c.tipo !== 'grupo')
+    .filter((c) => c.activa && !esCuentaInterna(c.tipo))
     .map((c) => ({ valor: c.id, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo] }))
 
   async function guardar(e: FormEvent) {

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import { marcarLeidas } from '../lib/push'
 import Combobox, { type Opcion } from '../components/Combobox'
-import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas, type Cuenta } from '../lib/datos'
+import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, useCuentas, type Cuenta, esCuentaInterna } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, nombreDia, parseMonto } from '../lib/format'
 import {
   calcularPendientes,
@@ -113,7 +113,7 @@ export default function GrupoDetalle() {
     .filter((c) => c.tipo === 'gasto' && c.activa)
     .map((c) => ({ valor: c.id, texto: c.nombre }))
   const opcionesCuenta: Opcion[] = cuentas
-    .filter((c) => c.activa && c.tipo !== 'grupo')
+    .filter((c) => c.activa && !esCuentaInterna(c.tipo))
     .map((c) => ({ valor: c.id, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo] }))
 
   async function invitar() {

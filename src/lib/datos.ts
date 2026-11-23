@@ -71,8 +71,11 @@ export const TIPOS_CUENTA: { valor: TipoCuenta; texto: string }[] = [
 export const TEXTO_TIPO_CUENTA = {
   ...Object.fromEntries(TIPOS_CUENTA.map((t) => [t.valor, t.texto])),
   grupo: 'Grupo',
-  persona: 'Préstamo',
+  persona: 'Deuda',
 } as Record<TipoCuenta, string>
+
+/** Cuentas que maneja la app (grupos y préstamos a personas), no las que creás en Ajustes. */
+export const esCuentaInterna = (tipo: TipoCuenta) => tipo === 'grupo' || tipo === 'persona'
 
 /** Cuentas cuyo saldo es "disponible para gastar" (no tarjetas ni brokers). */
 export const esCuentaDisponible = (tipo: TipoCuenta) => tipo === 'banco' || tipo === 'billetera' || tipo === 'efectivo'
@@ -444,4 +447,19 @@ export function useSaldosAl(fecha: string) {
     }
   }, [fecha])
   return saldos
+}
+
+/** Crea (o reusa) la cuenta de una persona para préstamos y deudas. Devuelve su id. */
+export async function crearPersona(nombre: string): Promise<{ id: string | null; error: string | null }> {
+  const limpio = nombre.trim().slice(0, 40)
+  if (!limpio) return { id: null, error: 'Poné un nombre.' }
+  const { data, error } = await supabase.from('cuentas').insert({ nombre: limpio, tipo: 'persona', orden: 900 }).select('id').single()
+  if (!error) return { id: data.id as string, error: null }
+  if (error.code === '23505') {
+    const { data: ya } = await supabase.from('cuentas').select('id, tipo').eq('nombre', limpio).maybeSingle()
+    if (ya?.tipo === 'persona') return { id: ya.id as string, error: null }
+    return { id: null, error: `Ya tenés una cuenta llamada "${limpio}". Usá otro nombre (por ejemplo, con el apellido).` }
+  }
+  if (error.code === '23514') return { id: null, error: 'Falta actualizar la base (SQL 0021) para usar préstamos.' }
+  return { id: null, error: error.message }
 }

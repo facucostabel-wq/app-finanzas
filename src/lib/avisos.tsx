@@ -16,7 +16,7 @@ export function Aviso({ children }: { children: ReactNode }) {
 }
 
 /** Cuentas que no tienen "saldo" propio: no se avisa por fondos. */
-const SIN_SALDO = ['tarjeta', 'grupo']
+const SIN_SALDO = ['tarjeta', 'grupo', 'persona']
 
 /** Efecto de un movimiento en una cuenta (para descontarlo al editar). */
 export type Efecto = { cuenta_id: string | null; moneda: Moneda; monto: number }

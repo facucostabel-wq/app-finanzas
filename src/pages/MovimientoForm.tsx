@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Combobox, { type Opcion } from '../components/Combobox'
 import {
   obtenerCompra,
@@ -23,12 +23,12 @@ import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 import InputNumero from '../components/InputNumero'
 import { useTiposHoy } from '../lib/cotizaciones'
-import { useMovimientosDelMes } from '../lib/datos'
+import { crearPersona, esCuentaInterna, useMovimientosDelMes } from '../lib/datos'
 import { estadoPresupuestos, usePresupuestos } from '../lib/presupuestos'
 import CampoEtiquetas from '../components/CampoEtiquetas'
 import { guardarEtiquetado, useEtiquetas, vigenteEn } from '../lib/etiquetas'
 
-type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'transferencia'
+type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'transferencia' | 'prestamo'
 
 // Recuerda la última cuenta usada para cada tipo (comodidad local, no datos sensibles).
 const claveCuenta = (t: TipoMovimiento) => `ultima-cuenta:${t}`
@@ -54,10 +54,14 @@ export default function MovimientoForm() {
   const { perfil } = usePerfil()
   const { categorias, loading: cargandoCategorias, recargar: recargarCategorias } = useCategorias()
   const { activos, recargar: recargarActivos } = useActivos()
-  const { cuentas, loading: cargandoCuentas } = useCuentas()
+  const { cuentas, loading: cargandoCuentas, recargar: recargarCuentas } = useCuentas()
   const favoritas = perfil?.monedas_favoritas ?? ['ARS']
 
-  const [tipo, setTipo] = useState<TipoPantalla>('gasto')
+  const [params] = useSearchParams()
+  const [tipo, setTipo] = useState<TipoPantalla>(() => (!editando && params.get('tipo') === 'prestamo' ? 'prestamo' : 'gasto'))
+  // Préstamos: la persona (su cuenta) y si le diste plata o te dio.
+  const [personaId, setPersonaId] = useState<string | null>(() => (!editando ? params.get('persona') : null))
+  const [sentidoPrestamo, setSentidoPrestamo] = useState<'di' | 'recibi'>(() => (params.get('sentido') === 'recibi' ? 'recibi' : 'di'))
   const [sentido, setSentido] = useState<'aporte' | 'rescate'>('aporte')
   const [montoTexto, setMontoTexto] = useState('')
   const [moneda, setMoneda] = useState(favoritas[0])
@@ -142,7 +146,27 @@ export default function MovimientoForm() {
     setEtiquetasElegidas((prev) => [...new Set([...prev, ...claveEvento.split(',').filter((x) => !descartadas.has(x))])])
   }, [editando, claveEvento, descartadas])
 
-  const tipoMovimiento: TipoMovimiento = tipo === 'inversion' ? sentido : tipo
+  // Una transferencia con una persona se edita como préstamo.
+  const [prestamoDetectado, setPrestamoDetectado] = useState(false)
+  useEffect(() => {
+    if (!original || prestamoDetectado || cargandoCuentas || original.tipo !== 'transferencia') return
+    const tipoDe = (cid: string | null) => cuentas.find((c) => c.id === cid)?.tipo
+    if (tipoDe(original.cuenta_destino_id) === 'persona') {
+      setTipo('prestamo')
+      setSentidoPrestamo('di')
+      setPersonaId(original.cuenta_destino_id)
+      setCuentaId(original.cuenta_id)
+    } else if (tipoDe(original.cuenta_id) === 'persona') {
+      setTipo('prestamo')
+      setSentidoPrestamo('recibi')
+      setPersonaId(original.cuenta_id)
+      setCuentaId(original.cuenta_destino_id)
+    }
+    setPrestamoDetectado(true)
+  }, [original, prestamoDetectado, cargandoCuentas, cuentas])
+
+  const esPrestamo = tipo === 'prestamo'
+  const tipoMovimiento: TipoMovimiento = tipo === 'inversion' ? sentido : tipo === 'prestamo' ? 'transferencia' : tipo
   const esTransferencia = tipo === 'transferencia'
   const tipoCat = tipoMovimiento === 'transferencia' ? null : tipoCategoriaDe(tipoMovimiento)
   const visibles = categorias.filter(
@@ -182,8 +206,10 @@ export default function MovimientoForm() {
     : delaCategoria.map((a) => ({ valor: a.id, texto: a.nombre }))
   // Las cuentas de grupo las maneja la pantalla de grupos.
   const cuentasActivas = cuentas.filter(
-    (c) => (c.activa && c.tipo !== 'grupo') || c.id === cuentaId || c.id === destinoId,
+    (c) => (c.activa && !esCuentaInterna(c.tipo)) || ((c.id === cuentaId || c.id === destinoId) && c.tipo !== 'persona'),
   )
+  const personas = cuentas.filter((c) => c.tipo === 'persona' && (c.activa || c.id === personaId || c.id === cuentaId))
+  const opcionesPersona: Opcion[] = personas.map((c) => ({ valor: c.id, texto: c.nombre }))
   const opcionesCuenta: Opcion[] = cuentasActivas.map((c) => ({
     valor: c.id,
     texto: nombreCuenta(c),
@@ -193,7 +219,20 @@ export default function MovimientoForm() {
   // Lo que ya estaba guardado de este movimiento no cuenta para los avisos.
   const descontar = original && original.fecha <= fecha ? efectosDe(original) : []
   const saleplata = tipoMovimiento === 'gasto' || tipoMovimiento === 'aporte' || tipoMovimiento === 'transferencia'
-  const opcionesOrigen = saleplata ? opcionesConSaldo(cuentasActivas, moneda, saldosFecha, descontar) : opcionesCuenta
+  const opcionesOrigen = [
+    ...(saleplata ? opcionesConSaldo(cuentasActivas, moneda, saldosFecha, descontar) : opcionesCuenta),
+    // Un gasto tuyo que pagó otra persona: queda como que le debés.
+    ...(tipoMovimiento === 'gasto' && !esPrestamo
+      ? personas.map((c) => ({ valor: c.id, texto: c.nombre, detalle: 'Lo pagó y le debés', grupo: 'Lo pagó otra persona' }))
+      : []),
+  ]
+  const pagoOtraPersona = tipoMovimiento === 'gasto' && cuentas.find((c) => c.id === cuentaId)?.tipo === 'persona'
+  async function nuevaPersona(nombre: string) {
+    const r = await crearPersona(nombre)
+    if (r.error) setError(r.error)
+    else await recargarCuentas()
+    return r.id
+  }
   const destinoEsTarjeta = cuentas.find((c) => c.id === destinoId)?.tipo === 'tarjeta'
   const conTarjeta = tipoMovimiento === 'gasto' && cuentas.find((c) => c.id === cuentaId)?.tipo === 'tarjeta'
   const enCuotas = conTarjeta && cuotas > 1
@@ -217,7 +256,7 @@ export default function MovimientoForm() {
   // ---- Avisos (no frenan: se puede guardar igual) ----
   const cuenta = cuentas.find((c) => c.id === cuentaId)
   const destino = cuentas.find((c) => c.id === destinoId)
-  const avisoCuenta = saleplata
+  const avisoCuenta = saleplata && !(tipo === 'prestamo' && sentidoPrestamo === 'recibi')
     ? avisoFondos({
         cuenta,
         moneda,
@@ -304,11 +343,14 @@ export default function MovimientoForm() {
   }
 
   // Movimiento nuevo: propone la última cuenta usada para este tipo.
+  // Solo al cambiar de tipo (no cuando se recargan las cuentas, p. ej. al agregar una persona).
+  const [propuestaPara, setPropuestaPara] = useState<string | null>(null)
   useEffect(() => {
-    if (editando || cargandoCuentas) return
+    if (editando || cargandoCuentas || propuestaPara === tipoMovimiento) return
     const ultima = leerUltimaCuenta(tipoMovimiento)
-    setCuentaId(ultima && cuentas.some((c) => c.id === ultima && c.activa) ? ultima : null)
-  }, [tipoMovimiento, editando, cargandoCuentas, cuentas])
+    setCuentaId(ultima && cuentas.some((c) => c.id === ultima && c.activa && c.tipo !== 'persona') ? ultima : null)
+    setPropuestaPara(tipoMovimiento)
+  }, [tipoMovimiento, editando, cargandoCuentas, cuentas, propuestaPara])
 
   async function crearActivo(nombre: string): Promise<string | null> {
     const { data, error } = await supabase
@@ -376,6 +418,30 @@ export default function MovimientoForm() {
     e.preventDefault()
     setError(null)
     if (!monto) return setError('Ingresá un monto válido, por ejemplo 12.500 o 12500,50.')
+    if (esPrestamo) {
+      if (!personaId) return setError('Elegí la persona (o escribí su nombre para agregarla).')
+      if (!cuentaId) return setError(sentidoPrestamo === 'di' ? 'Elegí de qué cuenta salió la plata.' : 'Elegí a qué cuenta entró la plata.')
+      const datosPrestamo = {
+        tipo: 'transferencia',
+        monto,
+        moneda,
+        categoria_id: null,
+        cuenta_id: sentidoPrestamo === 'di' ? cuentaId : personaId,
+        cuenta_destino_id: sentidoPrestamo === 'di' ? personaId : cuentaId,
+        forma_pago: null,
+        activo_id: null,
+        cantidad: null,
+        fecha,
+        nota: nota.trim() || null,
+      }
+      setBusy(true)
+      const { error } = editando
+        ? await supabase.from('movimientos').update(datosPrestamo).eq('id', id!)
+        : await supabase.from('movimientos').insert(datosPrestamo)
+      setBusy(false)
+      if (error) return setError(`No se pudo guardar: ${error.message}`)
+      return navigate(-1)
+    }
     if (!esTransferencia && !categoriaId) return setError('Elegí una categoría.')
     if (!cuentaId) return setError(esTransferencia ? 'Elegí la cuenta de origen.' : 'Elegí la cuenta.')
     if (esTransferencia && !destinoId) return setError('Elegí la cuenta de destino.')
@@ -500,13 +566,14 @@ export default function MovimientoForm() {
             Esta es la cuota {cuotaN} de {cuotas}. Los cambios se aplican a toda la compra.
           </p>
         )}
-        <div className="segmentado" role="group" aria-label="Tipo de movimiento">
+        <div className="segmentado tipos-mov" role="group" aria-label="Tipo de movimiento">
           {(
             [
               ['gasto', 'Gasto'],
               ['ingreso', 'Ingreso'],
               ['inversion', 'Inversión'],
               ['transferencia', 'Transferir'],
+              ['prestamo', 'Préstamo'],
             ] as [TipoPantalla, string][]
           ).map(([v, t]) => (
             <button type="button" key={v} aria-pressed={tipo === v} onClick={() => cambiarTipo(v)}>
@@ -554,7 +621,40 @@ export default function MovimientoForm() {
           </p>
         )}
 
-        {esTransferencia ? (
+        {esPrestamo ? (
+          <>
+            <div className="segmentado chico" role="group" aria-label="Qué pasó">
+              <button type="button" aria-pressed={sentidoPrestamo === 'di'} onClick={() => setSentidoPrestamo('di')}>
+                Le di plata
+              </button>
+              <button type="button" aria-pressed={sentidoPrestamo === 'recibi'} onClick={() => setSentidoPrestamo('recibi')}>
+                Me dio plata
+              </button>
+            </div>
+            <Combobox
+              etiqueta="Persona"
+              opciones={opcionesPersona}
+              valor={personaId}
+              onCambio={setPersonaId}
+              placeholder="Buscar o escribir un nombre…"
+              onCrear={nuevaPersona}
+              textoCrear={(t) => `+ Agregar a "${t}"`}
+              textoVacio="Escribí el nombre para agregarla."
+            />
+            <Combobox
+              etiqueta={sentidoPrestamo === 'di' ? 'Salió de' : 'Entró a'}
+              opciones={sentidoPrestamo === 'di' ? opcionesConSaldo(cuentasActivas, moneda, saldosFecha, descontar) : opcionesCuenta}
+              valor={cuentaId}
+              onCambio={setCuentaId}
+              placeholder="Buscar cuenta…"
+            />
+            <p className="muted chico">
+              {sentidoPrestamo === 'di'
+                ? 'Le prestaste plata o le devolviste lo que le debías. No cuenta como gasto: queda registrado en Deudas.'
+                : 'Te prestó plata o te devolvió lo que te debía. No cuenta como ingreso: queda registrado en Deudas.'}
+            </p>
+          </>
+        ) : esTransferencia ? (
           <>
             <Combobox
               etiqueta="Desde"
@@ -638,16 +738,23 @@ export default function MovimientoForm() {
           </label>
         )}
 
-        {!esTransferencia && (
+        {!esTransferencia && !esPrestamo && (
           <Combobox
             etiqueta={etiquetaCuenta}
             opciones={opcionesOrigen}
             valor={cuentaId}
             onCambio={setCuentaId}
-            placeholder="Buscar cuenta o tarjeta…"
+            placeholder={tipoMovimiento === 'gasto' ? 'Buscar cuenta, tarjeta o persona…' : 'Buscar cuenta o tarjeta…'}
+            onCrear={tipoMovimiento === 'gasto' ? nuevaPersona : undefined}
+            textoCrear={(t) => `+ Lo pagó "${t}" (le vas a deber)`}
           />
         )}
-        {!esTransferencia && avisoCuenta && <Aviso>{avisoCuenta}</Aviso>}
+        {pagoOtraPersona && (
+          <p className="muted chico">
+            Es un gasto tuyo que pagó {cuentas.find((c) => c.id === cuentaId)?.nombre}: queda como que le debés, en Deudas.
+          </p>
+        )}
+        {!esTransferencia && !esPrestamo && avisoCuenta && <Aviso>{avisoCuenta}</Aviso>}
 
         {conTarjeta && (
           <div className="grupo">
@@ -689,7 +796,7 @@ export default function MovimientoForm() {
           Fecha
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </label>
-        {!esTransferencia && !et.falta && (
+        {!esTransferencia && !esPrestamo && !et.falta && (
           <CampoEtiquetas
             todas={et.etiquetas}
             elegidas={etiquetasElegidas}

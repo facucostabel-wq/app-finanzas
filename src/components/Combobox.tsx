@@ -24,6 +24,7 @@ export default function Combobox({
   onCambio,
   placeholder = 'Buscar…',
   onCrear,
+  textoCrear = (t: string) => `+ Crear "${t}"`,
   textoVacio = 'Sin resultados',
 }: {
   etiqueta: string
@@ -33,6 +34,8 @@ export default function Combobox({
   placeholder?: string
   /** Si se pasa, ofrece crear una opción nueva con lo escrito cuando no hay coincidencia exacta. */
   onCrear?: (texto: string) => Promise<string | null>
+  /** Texto de la opción para crear (por defecto: + Crear "…"). */
+  textoCrear?: (texto: string) => string
   textoVacio?: string
 }) {
   const id = useId()
@@ -168,7 +171,7 @@ export default function Combobox({
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={crear}
               >
-                {creando ? 'Creando…' : `+ Crear "${textoLimpio}"`}
+                {creando ? 'Creando…' : textoCrear(textoLimpio)}
               </div>
             </li>
           )}

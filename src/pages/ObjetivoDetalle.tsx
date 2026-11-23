@@ -7,7 +7,7 @@ import IconoCategoria from '../components/IconoCategoria'
 import { textoPlan } from '../components/TarjetaObjetivo'
 import { BotonOjo, Oculto } from '../lib/ocultar'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
-import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias } from '../lib/datos'
+import { nombreCuenta, TEXTO_TIPO_CUENTA, useCategorias, esCuentaInterna } from '../lib/datos'
 import { formatMonto, hoyISO, montoAEditable, parseMonto } from '../lib/format'
 import { calcularPlan, calcularProgreso, estaDestinada } from '../lib/objetivos'
 import { Aviso, AvisoFondosCuenta } from '../lib/avisos'
@@ -66,7 +66,7 @@ export default function ObjetivoDetalle() {
     .filter((c) => c.activa && !['tarjeta', 'grupo'].includes(c.tipo) && !vinculadas.has(c.id))
     .map((c) => ({ valor: c.id, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo] }))
   const opcionesPago: Opcion[] = ctx.cuentas
-    .filter((c) => c.activa && c.tipo !== 'grupo')
+    .filter((c) => c.activa && !esCuentaInterna(c.tipo))
     .map((c) => ({ valor: c.id, texto: nombreCuenta(c), detalle: TEXTO_TIPO_CUENTA[c.tipo] }))
   const conTenencia = new Set(ctx.tenencias.filter((t) => t.cantidad > 0).map((t) => t.activo_id))
   const opcionesVinculo: Opcion[] = [

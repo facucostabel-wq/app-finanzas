@@ -21,6 +21,7 @@ import {
   useSaldosCuentas,
   type Categoria,
   type TipoCategoria,
+  esCuentaInterna,
 } from '../lib/datos'
 import { formatMonto, hoyISO, mesActual } from '../lib/format'
 import { nombreCortoMoneda, MONEDAS, nombreMoneda } from '../lib/monedas'
@@ -50,7 +51,7 @@ export default function Ajustes() {
   const { cuentas, error: errorCuentas } = useCuentas()
   const [fechaSaldo, setFechaSaldo] = useState('')
   const [okFecha, setOkFecha] = useState(false)
-  const principales = cuentas.filter((c) => !c.cuenta_padre_id && c.tipo !== 'grupo')
+  const principales = cuentas.filter((c) => !c.cuenta_padre_id && !esCuentaInterna(c.tipo))
   const saldosDe = (cuentaId: string) =>
     saldos
       .filter((x) => x.cuenta_id === cuentaId && Math.abs(x.monto) >= 0.01)

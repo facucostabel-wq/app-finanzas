@@ -11,11 +11,12 @@ import BarraPresupuesto from '../components/BarraPresupuesto'
 import { useTiposHoy } from '../lib/cotizaciones'
 import { estadoPresupuestos, usePresupuestos } from '../lib/presupuestos'
 import { usePatrimonio } from '../lib/patrimonio'
-import { Landmark } from 'lucide-react'
+import { ArrowLeftRight, Landmark } from 'lucide-react'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { calcularPlan, calcularProgreso, reservadoEnDisponible } from '../lib/objetivos'
 import {
   esCuentaDisponible,
+  esCuentaInterna,
   nombreCuenta,
   gastosPorCategoria,
   ordenarMonedas,
@@ -36,8 +37,8 @@ import { usePerfil } from '../lib/perfil'
 const redondear = (n: number) => Math.round(n * 100) / 100
 
 function textoSaldo(tipo: string, monto: number, moneda: Moneda) {
-  if ((tipo === 'tarjeta' || tipo === 'grupo') && monto < 0) return `Debés ${formatMonto(redondear(-monto), moneda)}`
-  if (tipo === 'grupo') return `Te deben ${formatMonto(redondear(monto), moneda)}`
+  if ((tipo === 'tarjeta' || tipo === 'grupo' || tipo === 'persona') && monto < 0) return `Debés ${formatMonto(redondear(-monto), moneda)}`
+  if (tipo === 'grupo' || tipo === 'persona') return `Te ${tipo === 'persona' ? 'debe' : 'deben'} ${formatMonto(redondear(monto), moneda)}`
   return formatMonto(redondear(monto), moneda)
 }
 
@@ -111,6 +112,7 @@ export default function Home() {
     { titulo: 'Tarjetas', filas: porCuenta.filter((x) => x.cuenta.tipo === 'tarjeta') },
     { titulo: 'En brokers', filas: porCuenta.filter((x) => x.cuenta.tipo === 'broker') },
     { titulo: 'En grupos', filas: porCuenta.filter((x) => x.cuenta.tipo === 'grupo') },
+    { titulo: 'Deudas', filas: porCuenta.filter((x) => x.cuenta.tipo === 'persona') },
   ].filter((g) => g.filas.length > 0)
 
   // Neto de todas las cuentas: lo que tenés menos lo que debés (tarjetas en negativo),
@@ -122,8 +124,18 @@ export default function Home() {
     favoritas,
   )
   const negativas = porCuenta.filter(
-    (x) => x.cuenta.tipo !== 'tarjeta' && x.cuenta.tipo !== 'grupo' && x.saldos.some((y) => y.monto < -0.005),
+    (x) => x.cuenta.tipo !== 'tarjeta' && !esCuentaInterna(x.cuenta.tipo) && x.saldos.some((y) => y.monto < -0.005),
   )
+  // Préstamos a personas: lo que te deben y lo que debés, por moneda.
+  const deudaAFavorM = new Map<Moneda, number>()
+  const deudaEnContraM = new Map<Moneda, number>()
+  for (const s of saldosCuentas) {
+    if (tipoDe.get(s.cuenta_id) !== 'persona' || Math.abs(s.monto) < 0.005) continue
+    const m = s.monto > 0 ? deudaAFavorM : deudaEnContraM
+    m.set(s.moneda, (m.get(s.moneda) ?? 0) + Math.abs(s.monto))
+  }
+  const deudaAFavor = [...deudaAFavorM]
+  const deudaEnContra = [...deudaEnContraM]
   const hayCuotasFuturas = cuentas.some((c) => c.tipo === 'tarjeta' && futurasDe(c.id).length > 0)
 
   // Disponible: la moneda principal grande, el resto chico debajo.
@@ -231,11 +243,17 @@ export default function Home() {
                         <li key={cuenta.id} className={saldos.length > 1 ? 'cuenta-multi' : ''}>
                           <div className="cuenta-renglon">
                             <Link
-                              to={cuenta.tipo === 'grupo' && cuenta.grupo_id ? `/grupos/${cuenta.grupo_id}` : `/movimientos?cuenta=${cuenta.id}`}
+                              to={
+                                cuenta.tipo === 'grupo' && cuenta.grupo_id
+                                  ? `/grupos/${cuenta.grupo_id}`
+                                  : cuenta.tipo === 'persona'
+                                    ? `/deudas/${cuenta.id}`
+                                    : `/movimientos?cuenta=${cuenta.id}`
+                              }
                               className="cuenta-link"
                             >
                               {nombreCuenta(cuenta)}
-                              {cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' && saldos.some((x) => x.monto < -0.005) && (
+                              {cuenta.tipo !== 'tarjeta' && !esCuentaInterna(cuenta.tipo) && saldos.some((x) => x.monto < -0.005) && (
                                 <span className="icono-alerta" title="Saldo negativo: revisá sus movimientos o el saldo inicial">
                                   <TriangleAlert size={15} strokeWidth={2.2} aria-label="Saldo negativo" />
                                 </span>
@@ -245,7 +263,7 @@ export default function Home() {
                             {saldos.length <= 1 && (
                               <span className="cuentas-montos">
                                 {saldos.map((x) => (
-                                  <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
+                                  <span key={x.moneda} className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && !esCuentaInterna(cuenta.tipo) ? 'negativo' : ''}>
                                     <Oculto>{textoSaldo(cuenta.tipo, x.monto, x.moneda)}</Oculto>
                                   </span>
                                 ))}
@@ -265,7 +283,7 @@ export default function Home() {
                                 className="cuenta-sub"
                               >
                                 <span>{nombreCortoMoneda(x.moneda)}</span>
-                                <span className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && cuenta.tipo !== 'grupo' ? 'negativo' : ''}>
+                                <span className={x.monto < 0 && cuenta.tipo !== 'tarjeta' && !esCuentaInterna(cuenta.tipo) ? 'negativo' : ''}>
                                   <Oculto>{textoSaldo(cuenta.tipo, x.monto, x.moneda)}</Oculto>
                                 </span>
                               </Link>
@@ -357,6 +375,33 @@ export default function Home() {
               <span className="muted"> vs {nombreMes(patriPrevio!.mes).split(' ')[0].toLowerCase().slice(0, 3)}</span>
             </span>
           )}
+          <span className="menu-flecha" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+      )}
+
+      {esMesActual && (deudaAFavor.length > 0 || deudaEnContra.length > 0) && (
+        <Link to="/deudas" className="tarjeta-patrimonio tarjeta-deudas">
+          <span className="tarjeta-patrimonio-icono" aria-hidden="true">
+            <ArrowLeftRight size={20} />
+          </span>
+          <span className="tarjeta-patrimonio-texto">
+            <span className="muted chico">Deudas</span>
+            <span className="chico">
+              {deudaAFavor.length > 0 && (
+                <span className="positivo">
+                  Te deben <Oculto>{deudaAFavor.map(([m, v]) => formatMonto(redondear(v), m)).join(' + ')}</Oculto>
+                </span>
+              )}
+              {deudaAFavor.length > 0 && deudaEnContra.length > 0 && <span className="muted"> · </span>}
+              {deudaEnContra.length > 0 && (
+                <span className="negativo">
+                  Debés <Oculto>{deudaEnContra.map(([m, v]) => formatMonto(redondear(v), m)).join(' + ')}</Oculto>
+                </span>
+              )}
+            </span>
+          </span>
           <span className="menu-flecha" aria-hidden="true">
             ›
           </span>

@@ -988,3 +988,23 @@ a.boton-icono { text-decoration: none; }
 .patrimonio-detalle dl div { display: flex; justify-content: space-between; gap: 10px; }
 .patrimonio-detalle dt { color: var(--muted); }
 .patrimonio-detalle dd { margin: 0; font-weight: 600; }
+
+/* ===== Deudas ===== */
+.tipos-mov { flex-wrap: wrap; }
+.tipos-mov button { flex: 1 1 30%; }
+.deudas-lista { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.deuda-fila {
+  display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); text-decoration: none;
+}
+.deuda-inicial { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--surface-2); color: var(--muted); flex-shrink: 0; }
+.deuda-inicial.a-favor { background: var(--accent-suave); color: var(--accent); }
+.deuda-inicial.en-contra { background: color-mix(in srgb, var(--error) 14%, transparent); color: var(--error); }
+.deuda-nombre { flex: 1; min-width: 0; font-weight: 600; }
+.deuda-saldo { display: grid; justify-items: end; gap: 2px; font-weight: 700; }
+.deuda-saldo > span { display: grid; justify-items: end; }
+.deuda-saldo small { font-weight: 400; font-size: 0.72rem; }
+.deuda-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 22px; }
+.deuda-acciones .boton { text-align: center; padding: 13px 10px; border-radius: 14px; font-weight: 700; text-decoration: none; }
+.secundario-link { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+a.boton-contorno { text-decoration: none; }
