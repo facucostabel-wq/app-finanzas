@@ -155,6 +155,13 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
     traerCierres(),
   ])
 
+  // Sin categorías o cuentas el reporte saldría lleno de "—": mejor avisar el error.
+  for (const [nombre, r] of [
+    ['categorías', cats],
+    ['cuentas', ctas],
+    ['subcategorías de inversión', acts],
+  ] as const)
+    if (r.error) throw new Error(`no se pudieron leer las ${nombre} (${r.error.message})`)
   const categorias = (cats.data ?? []) as Categoria[]
   const cuentas = (ctas.data ?? []) as Cuenta[]
   const activos = (acts.data ?? []) as Activo[]
@@ -182,6 +189,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
   }))
 
   const catPorId = new Map(categorias.map((c) => [c.id, c]))
+  const nombreCat = (id: string | null) => t(catPorId.get(id ?? '')?.nombre ?? 'Sin categoría')
   const actPorId = new Map(activos.map((a) => [a.id, a]))
   const ctaPorId = new Map(cuentas.map((c) => [c.id, c]))
   const nomCuenta = (id: string | null) => {
@@ -379,7 +387,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
       catsGasto.map(([id, v]) => {
         const prom = previos.length ? previos.reduce((s, x) => s + (x.porCategoria.get(id) ?? 0), 0) / previos.length : null
         return [
-          t(catPorId.get(id)?.nombre ?? '—'),
+          t(catPorId.get(id)?.nombre ?? 'Sin categoría'),
           usd(v),
           arsPorCat.get(id) ? plata(arsPorCat.get(id)!, 'ARS') : '—',
           enGrupos.get(id) ? usd(enGrupos.get(id)!) : '—',
@@ -426,7 +434,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
   out.push(
     tabla(
       ['Categoría', 'USD'],
-      [...ingCat].sort((a, b) => b[1] - a[1]).map(([id, v]) => [t(catPorId.get(id)?.nombre ?? '—'), usd(v)]),
+      [...ingCat].sort((a, b) => b[1] - a[1]).map(([id, v]) => [t(catPorId.get(id)?.nombre ?? 'Sin categoría'), usd(v)]),
     ),
   )
 
@@ -550,7 +558,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
       ['Inversión', 'Categoría', 'Cantidad', 'Costo USD', 'Valor USD', 'Resultado USD', 'Resultado %', 'Valor según'],
       abiertas.map((p) => [
         t(p.nombre),
-        t(catPorId.get(p.categoria_id)?.nombre ?? '—'),
+        t(catPorId.get(p.categoria_id)?.nombre ?? 'Sin categoría'),
         p.porMonto ? '—' : cant(p.cantidad),
         num(p.costoUsd),
         num(p.valorUsd),
@@ -580,7 +588,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
         invDelMes.map((m) => [
           fechaCorta(m.fecha),
           m.tipo === 'aporte' ? 'Compra' : 'Venta',
-          t(m.activo_id ? (actPorId.get(m.activo_id)?.nombre ?? '—') : (catPorId.get(m.categoria_id ?? '')?.nombre ?? '—')),
+          t(m.activo_id ? (actPorId.get(m.activo_id)?.nombre ?? '—') : (catPorId.get(m.categoria_id ?? '')?.nombre ?? 'Sin categoría')),
           m.cantidad ? cant(m.cantidad) : '—',
           plata(m.monto, m.moneda),
         ]),
@@ -639,7 +647,11 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
       delMes.map((m) => [
         fechaCorta(m.fecha),
         m.tipo + (m.cuota_n ? ` (cuota ${m.cuota_n})` : ''),
-        m.tipo === 'transferencia' ? '—' : t(catPorId.get(m.categoria_id ?? '')?.nombre ?? '—'),
+        m.tipo === 'transferencia' ? (grupoDe(m) !== '—'
+            ? 'Movimiento con el grupo'
+            : ctaPorId.get(m.cuenta_destino_id ?? '')?.tipo === 'tarjeta'
+              ? 'Pago de tarjeta'
+              : 'Entre cuentas propias') : nombreCat(m.categoria_id),
         m.activo_id ? t(actPorId.get(m.activo_id)?.nombre ?? '—') : '—',
         grupoDe(m),
         m.tipo === 'transferencia' ? `${t(nomCuenta(m.cuenta_id))} → ${t(nomCuenta(m.cuenta_destino_id))}` : t(nomCuenta(m.cuenta_id)),
