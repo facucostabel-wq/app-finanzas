@@ -2,6 +2,7 @@ import type React from 'react'
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import FranjaDemo from './components/FranjaDemo'
+import AvisoPolitica from './components/AvisoPolitica'
 import Tutorial from './components/Tutorial'
 import { esDemo, horasRestantes } from './lib/demo'
 import { sincronizarPush } from './lib/push'
@@ -118,6 +119,7 @@ export default function App() {
     <>
     {verTutorial && <Tutorial key={session.user.id} uid={session.user.id} />}
     {demo && location.pathname !== '/demo' && !faltaConsentimiento && <FranjaDemo />}
+    {session && !faltaConsentimiento && !demo && location.pathname !== '/privacidad' && <AvisoPolitica />}
     <Routes>
       <Route path="/demo" element={<Demo />} />
       <Route path="/bienvenida" element={session ? <Navigate to="/" replace /> : <Bienvenida />} />

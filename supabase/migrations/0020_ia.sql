@@ -6,6 +6,20 @@ alter table public.perfiles add column if not exists ia_activada_at timestamptz;
 grant update (ia_activada_at) on public.perfiles to authenticated;
 
 -- ------------------------------------------------------------
+-- Aviso de cambios en la política de privacidad: cuándo vio el usuario la última versión.
+-- Si la política se actualiza después de esa fecha (o de su consentimiento), la app le
+-- muestra un aviso con lo que cambió hasta que toque "Entendido".
+-- ------------------------------------------------------------
+alter table public.perfiles add column if not exists politica_vista_at timestamptz;
+
+create or replace function public.marcar_politica_vista()
+returns void language sql security definer set search_path = '' as $$
+  update public.perfiles set politica_vista_at = now() where id = (select auth.uid());
+$$;
+revoke all on function public.marcar_politica_vista() from public, anon;
+grant execute on function public.marcar_politica_vista() to authenticated;
+
+-- ------------------------------------------------------------
 -- Demo: se le suma un saldo inicial al banco (los meses de ejemplo quedaban con el banco
 -- en negativo, y eso se veía raro en los reportes para la IA). Misma función que en 0019.
 -- ------------------------------------------------------------

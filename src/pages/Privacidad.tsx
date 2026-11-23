@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
+import { CAMBIOS_POLITICA, fechaLarga, ULTIMO_CAMBIO } from '../lib/politica'
 
 const CONTACTO = 'facuprime24@gmail.com'
-const ACTUALIZADA = '23 de noviembre de 2026'
+const ACTUALIZADA = fechaLarga(ULTIMO_CAMBIO.fecha)
 
 export default function Privacidad() {
   return (
@@ -160,7 +161,17 @@ export default function Privacidad() {
       <p>La app no está pensada para menores de 18 años.</p>
 
       <h2>Cambios</h2>
-      <p>Si esta política cambia, lo vas a ver en la app, con la fecha de actualización arriba.</p>
+      <p>
+        Si esta política cambia, te avisamos dentro de la app con un resumen de qué cambió, y la fecha de actualización
+        figura arriba. Historial de cambios:
+      </p>
+      <ul>
+        {CAMBIOS_POLITICA.map((c) => (
+          <li key={c.fecha}>
+            <b>{fechaLarga(c.fecha)}:</b> {c.resumen}
+          </li>
+        ))}
+      </ul>
     </main>
   )
 }
