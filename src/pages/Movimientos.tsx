@@ -9,6 +9,7 @@ import { TEXTO_FORMA_PAGO, TEXTO_TIPO, TEXTO_TIPO_CUENTA, useActivos, useCategor
 import { supabase } from '../lib/supabase'
 import { formatCantidad, formatMonto, formatPrecio, hoyISO, mesActual, nombreDia, nombreMes } from '../lib/format'
 import { usePerfil } from '../lib/perfil'
+import { useEtiquetas } from '../lib/etiquetas'
 import { nombreCortoMoneda } from '../lib/monedas'
 import { SelectorMes, useMes } from '../lib/mes'
 
@@ -39,7 +40,9 @@ export default function Movimientos() {
   const filtroCategoria = params.get('categoria') ?? ''
   const filtroCuenta = params.get('cuenta') ?? ''
   const filtroMoneda = filtroCuenta ? (params.get('moneda') ?? '') : ''
-  const hayFiltro = Boolean(filtroCategoria || filtroCuenta)
+  const filtroEtiqueta = params.get('etiqueta') ?? ''
+  const hayFiltro = Boolean(filtroCategoria || filtroCuenta || filtroEtiqueta)
+  const et = useEtiquetas()
   // Vista lista o calendario (se recuerda en el dispositivo).
   const [vista, setVista] = useState<'lista' | 'calendario'>(() => {
     try {
@@ -59,7 +62,7 @@ export default function Movimientos() {
   const [diaElegido, setDiaElegido] = useState<string | null>(null)
   const { perfil } = usePerfil()
   const [verFiltros, setVerFiltros] = useState(hayFiltro)
-  function cambiarFiltro(clave: 'categoria' | 'cuenta', valor: string) {
+  function cambiarFiltro(clave: 'categoria' | 'cuenta' | 'etiqueta', valor: string) {
     const nuevos = new URLSearchParams(params)
     if (clave === 'cuenta') {
       // "id|USD" = una moneda de la cuenta; "id" = la cuenta entera.
@@ -110,7 +113,8 @@ export default function Movimientos() {
     (m) =>
       (!filtroCategoria || m.categoria_id === filtroCategoria) &&
       (!filtroCuenta || m.cuenta_id === filtroCuenta || m.cuenta_destino_id === filtroCuenta) &&
-      (!filtroMoneda || m.moneda === filtroMoneda),
+      (!filtroMoneda || m.moneda === filtroMoneda) &&
+      (!filtroEtiqueta || et.deMovimiento(m).some((e) => e.id === filtroEtiqueta)),
   )
 
   // Totales de lo filtrado, por moneda: lo que entró y lo que salió.
@@ -168,6 +172,11 @@ export default function Movimientos() {
                           ? ` · ${formatCantidad(m.cantidad)} a ${formatPrecio(m.monto / m.cantidad, m.moneda)}`
                           : ''}
                         {m.nota ? ` · ${m.nota}` : ''}
+                        {et.deMovimiento(m).map((e) => (
+                          <span key={e.id} className="mov-etiqueta">
+                            #{e.nombre}
+                          </span>
+                        ))}
                       </div>
                     </div>
                     <div className={`monto ${m.tipo}`}>
@@ -217,6 +226,14 @@ export default function Movimientos() {
             valor={filtroMoneda ? `${filtroCuenta}|${filtroMoneda}` : filtroCuenta}
             onCambio={(v) => cambiarFiltro('cuenta', v)}
           />
+          {et.etiquetas.length > 0 && (
+            <Combobox
+              etiqueta="Etiqueta"
+              opciones={[{ valor: '', texto: 'Todas' }, ...et.etiquetas.map((e) => ({ valor: e.id, texto: `#${e.nombre}` }))]}
+              valor={filtroEtiqueta}
+              onCambio={(v) => cambiarFiltro('etiqueta', v)}
+            />
+          )}
           {hayFiltro && (
             <button type="button" className="link" onClick={() => setParams({}, { replace: true })}>
               Quitar filtros

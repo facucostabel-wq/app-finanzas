@@ -934,3 +934,32 @@ a.boton-icono { text-decoration: none; }
 .punto-ingreso { background: var(--info); }
 .punto-otra { background: #e0a526; }
 .calendario-leyenda { margin: 10px 0 14px; line-height: 1.5; }
+
+/* ===== Etiquetas y eventos ===== */
+.campo-etiquetas { display: grid; gap: 8px; }
+.chip-etiqueta {
+  display: inline-flex; align-items: center; gap: 4px; padding: 5px 6px 5px 11px; border-radius: 999px;
+  background: var(--accent-suave); color: var(--accent); font-weight: 600; font-size: 0.86rem;
+}
+.chip-etiqueta small { color: var(--muted); font-weight: 400; }
+.chip-etiqueta button { display: grid; place-items: center; background: none; border: 0; color: inherit; padding: 2px; }
+.etiqueta-entrada { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 0 10px; background: var(--bg); }
+.etiqueta-entrada svg { color: var(--muted); flex-shrink: 0; }
+.etiqueta-entrada input { border: 0; background: transparent; flex: 1; min-width: 0; padding: 11px 0; }
+.etiqueta-entrada input:focus { outline: none; }
+.chip-crear { border-style: dashed; }
+.mov-etiqueta { margin-left: 6px; color: var(--accent); font-weight: 600; }
+.subtitulo-lista { margin: 18px 0 8px; font-size: 0.85rem; color: var(--muted); font-weight: 600; text-transform: none; }
+.etiquetas-lista { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.etiqueta-fila {
+  display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); text-decoration: none;
+}
+.etiqueta-icono { flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-suave); color: var(--accent); }
+.etiqueta-texto { display: grid; gap: 2px; flex: 1; min-width: 0; font-weight: 600; }
+.etiqueta-texto .muted { font-weight: 400; }
+.etiqueta-total { font-weight: 700; white-space: nowrap; }
+.badge-en-curso { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-size: 0.7rem; font-weight: 700; vertical-align: middle; }
+.fechas-evento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nueva-etiqueta { margin: 14px 0; }
+.etiqueta-hero { margin: 10px 0 18px; }

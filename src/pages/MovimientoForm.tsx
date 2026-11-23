@@ -25,6 +25,8 @@ import InputNumero from '../components/InputNumero'
 import { useTiposHoy } from '../lib/cotizaciones'
 import { useMovimientosDelMes } from '../lib/datos'
 import { estadoPresupuestos, usePresupuestos } from '../lib/presupuestos'
+import CampoEtiquetas from '../components/CampoEtiquetas'
+import { guardarEtiquetado, useEtiquetas, vigenteEn } from '../lib/etiquetas'
 
 type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'transferencia'
 
@@ -77,6 +79,12 @@ export default function MovimientoForm() {
   const [original, setOriginal] = useState<Movimiento | null>(null)
   const [delDia, setDelDia] = useState<Movimiento[]>([])
   const saldosFecha = useSaldosAl(fecha)
+  // Etiquetas: las elegidas; al cargar uno nuevo, las de un evento en curso se agregan solas.
+  const et = useEtiquetas()
+  const [etiquetasElegidas, setEtiquetasElegidas] = useState<string[]>([])
+  const [descartadas, setDescartadas] = useState<Set<string>>(new Set())
+  const [etiquetasCargadas, setEtiquetasCargadas] = useState(!editando)
+  const porEvento = et.etiquetas.filter((e) => vigenteEn(e, fecha)).map((e) => e.id)
   const { movimientos: inversiones } = useInversiones()
 
   // Al editar, traer el movimiento.
@@ -120,6 +128,19 @@ export default function MovimientoForm() {
       setCargando(false)
     })
   }, [id])
+
+  // Al editar: las etiquetas que ya tenía.
+  useEffect(() => {
+    if (!editando || etiquetasCargadas || et.loading || cargando) return
+    setEtiquetasElegidas(et.deMovimiento({ id: id!, compra_id: compraId }).map((e) => e.id))
+    setEtiquetasCargadas(true)
+  }, [editando, etiquetasCargadas, et, cargando, id, compraId])
+  // Nuevo: suma las de eventos en curso para la fecha elegida (salvo las que quitaste).
+  const claveEvento = porEvento.join(',')
+  useEffect(() => {
+    if (editando || !claveEvento) return
+    setEtiquetasElegidas((prev) => [...new Set([...prev, ...claveEvento.split(',').filter((x) => !descartadas.has(x))])])
+  }, [editando, claveEvento, descartadas])
 
   const tipoMovimiento: TipoMovimiento = tipo === 'inversion' ? sentido : tipo
   const esTransferencia = tipo === 'transferencia'
@@ -393,36 +414,55 @@ export default function MovimientoForm() {
    * común. Si cambia de uno a otro al editar, reemplaza el registro anterior.
    */
   async function guardarEnBase(datos: Record<string, unknown>): Promise<string | null> {
-    if (enCuotas) {
-      const compra = {
-        fecha,
-        monto_total: monto,
-        moneda,
-        cuotas,
-        cuenta_id: cuentaId,
-        categoria_id: categoriaId,
-        nota: nota.trim() || null,
+    // Dónde quedan colgadas las etiquetas: la compra (todas sus cuotas) o el movimiento.
+    let destino: { movimiento_id?: string; compra_id?: string } | null = null
+    const resultado = await (async (): Promise<string | null> => {
+      if (enCuotas) {
+        const compra = {
+          fecha,
+          monto_total: monto,
+          moneda,
+          cuotas,
+          cuenta_id: cuentaId,
+          categoria_id: categoriaId,
+          nota: nota.trim() || null,
+        }
+        if (compraId) {
+          const { error } = await supabase.from('compras_cuotas').update(compra).eq('id', compraId)
+          destino = { compra_id: compraId }
+          return error?.message ?? null
+        }
+        const { data, error } = await supabase.from('compras_cuotas').insert(compra).select('id').single()
+        if (error) return error.message
+        destino = { compra_id: data.id as string }
+        if (editando) await supabase.from('movimientos').delete().eq('id', id!) // era un gasto en un pago
+        return null
       }
       if (compraId) {
-        const { error } = await supabase.from('compras_cuotas').update(compra).eq('id', compraId)
+        // Pasó de cuotas a un solo pago: se borra la compra y queda un gasto común.
+        const { data, error } = await supabase.from('movimientos').insert(datos).select('id').single()
+        if (error) return error.message
+        destino = { movimiento_id: data.id as string }
+        await supabase.from('compras_cuotas').delete().eq('id', compraId)
+        return null
+      }
+      if (editando) {
+        const { error } = await supabase.from('movimientos').update(datos).eq('id', id!)
+        destino = { movimiento_id: id! }
         return error?.message ?? null
       }
-      const { error } = await supabase.from('compras_cuotas').insert(compra)
+      const { data, error } = await supabase.from('movimientos').insert(datos).select('id').single()
       if (error) return error.message
-      if (editando) await supabase.from('movimientos').delete().eq('id', id!) // era un gasto en un pago
+      destino = { movimiento_id: data.id as string }
       return null
-    }
-    if (compraId) {
-      // Pasó de cuotas a un solo pago: se borra la compra y queda un gasto común.
-      const { error } = await supabase.from('movimientos').insert(datos)
-      if (error) return error.message
-      await supabase.from('compras_cuotas').delete().eq('id', compraId)
-      return null
-    }
-    const { error } = editando
-      ? await supabase.from('movimientos').update(datos).eq('id', id!)
-      : await supabase.from('movimientos').insert(datos)
-    return error?.message ?? null
+    })()
+    if (resultado || !destino || et.falta) return resultado
+    // Las etiquetas no bloquean el guardado: si fallan, se avisa pero el movimiento ya quedó.
+    const ids = esTransferencia ? [] : etiquetasElegidas
+    if (!editando && !ids.length) return null
+    const err = await guardarEtiquetado(destino, ids)
+    if (err) window.alert(`El movimiento se guardó, pero no sus etiquetas: ${err}`)
+    return null
   }
 
   async function borrar() {
@@ -649,6 +689,19 @@ export default function MovimientoForm() {
           Fecha
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </label>
+        {!esTransferencia && !et.falta && (
+          <CampoEtiquetas
+            todas={et.etiquetas}
+            elegidas={etiquetasElegidas}
+            porEvento={editando ? [] : porEvento}
+            onCreada={() => et.recargar()}
+            onCambio={(ids) => {
+              const quitadas = etiquetasElegidas.filter((x) => !ids.includes(x))
+              if (quitadas.length) setDescartadas((d) => new Set([...d, ...quitadas]))
+              setEtiquetasElegidas(ids)
+            }}
+          />
+        )}
         {avisoFechaFutura && <Aviso>{avisoFechaFutura}</Aviso>}
         {avisoPresupuesto && <Aviso>{avisoPresupuesto}</Aviso>}
         {duplicado && <Aviso>Ya cargaste uno igual ese día (mismo monto, {esTransferencia ? 'cuentas' : 'categoría y cuenta'}).</Aviso>}
