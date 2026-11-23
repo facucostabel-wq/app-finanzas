@@ -19,7 +19,7 @@ export default function BarraPresupuesto({ estado, compacta = false }: { estado:
         <span className="presupuesto-pista" aria-hidden="true">
           <span className="presupuesto-barra" style={{ width: `${ancho}%` }} />
         </span>
-        <span className="chico">{uso === null ? "—" : `${Math.floor(uso * 100)}%`}</span>
+        <span className="chico">{uso === null ? '—' : `${Math.floor(uso * 100)}%`}</span>
       </span>
     )
   return (
@@ -33,7 +33,7 @@ export default function BarraPresupuesto({ estado, compacta = false }: { estado:
             {formatMonto(Math.round(gastado * 100) / 100, presupuesto.moneda)} de {formatMonto(Math.round(limite * 100) / 100, presupuesto.moneda)}
           </Oculto>
         </span>
-        <span>{uso !== null ? `${Math.round(uso * 100)}% · ` : ''}<Oculto>{texto}</Oculto></span>
+        <span>{uso !== null ? `${Math.floor(uso * 100)}% · ` : ''}<Oculto>{texto}</Oculto></span>
       </div>
     </div>
   )
