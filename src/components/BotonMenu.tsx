@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  Sparkles,
   Target,
   TrendingUp,
   Users,
@@ -25,6 +26,7 @@ const SECCIONES = [
   { a: '/grupos', texto: 'Grupos', Icono: Users },
   { a: '/inversiones', texto: 'Inversiones', Icono: TrendingUp },
   { a: '/cierre', texto: 'Cierre de mes', Icono: CalendarCheck },
+  { a: '/ia', texto: 'Análisis con IA', Icono: Sparkles },
   { a: '/ajustes', texto: 'Ajustes', Icono: Settings },
 ]
 

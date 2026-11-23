@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 const CONTACTO = 'facuprime24@gmail.com'
-const ACTUALIZADA = '10 de noviembre de 2026'
+const ACTUALIZADA = '23 de noviembre de 2026'
 
 export default function Privacidad() {
   return (
@@ -92,6 +92,27 @@ export default function Privacidad() {
         Algunos de estos proveedores pueden procesar datos técnicos fuera de la Argentina. Al usar la app aceptás esa
         transferencia, limitada a lo necesario para que funcione.
       </p>
+
+      <h2>Análisis con IA (opcional)</h2>
+      <p>
+        Si lo activás en “Análisis con IA”, la app arma un prompt y reportes mensuales para que los analices con la
+        inteligencia artificial que elijas (ChatGPT, Gemini, Claude u otra). Al activarlo queda registrada la fecha.
+      </p>
+      <ul>
+        <li>
+          Los reportes incluyen montos, fechas, categorías, cuentas, inversiones, objetivos y el nombre de tus grupos. No
+          incluyen las notas de los movimientos, los nombres de los miembros de tus grupos ni tu email.
+        </li>
+        <li>
+          La app no se conecta con ninguna IA: los archivos se generan en tu dispositivo y solo salen si vos los descargás
+          o copiás y se los mandás.
+        </li>
+        <li>
+          Lo que le mandes a una IA queda en manos de esa empresa y sujeto a sus condiciones de uso y privacidad, no a
+          las de esta app. Revisá si usa tus conversaciones para entrenar sus modelos y cómo desactivarlo.
+        </li>
+        <li>Podés desactivarlo cuando quieras desde la misma pantalla.</li>
+      </ul>
 
       <h2>Seguridad</h2>
       <p>

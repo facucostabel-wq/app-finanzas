@@ -78,6 +78,8 @@ begin
   insert into public.cuentas (usuario_id, nombre, tipo, orden, cuenta_padre_id) values (uid, 'Visa Galicia', 'tarjeta', 3, c_banco) returning id into c_visa;
   insert into public.cuentas (usuario_id, nombre, tipo, orden) values (uid, 'Mercado Pago', 'billetera', 4) returning id into c_mp;
   insert into public.cuentas (usuario_id, nombre, tipo, orden) values (uid, 'Broker', 'broker', 5) returning id into c_broker;
+  -- Ahorros previos en el banco, para que los saldos de los meses de ejemplo no queden negativos.
+  insert into public.saldos_iniciales (usuario_id, cuenta_id, moneda, monto) values (uid, c_banco, 'ARS', 900000);
 
   select id into g_super from public.categorias where usuario_id = uid and tipo = 'gasto' and nombre = 'Supermercado';
   select id into g_salidas from public.categorias where usuario_id = uid and tipo = 'gasto' and nombre = 'Salidas y comidas';

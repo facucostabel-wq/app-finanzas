@@ -113,11 +113,11 @@ export type Activo = {
   divisa: string | null
 }
 
-const CAMPOS_MOV =
+export const CAMPOS_MOV =
   'id, fecha, tipo, monto, moneda, categoria_id, forma_pago, nota, activo_id, cantidad, cuenta_id, cuenta_destino_id, compra_id, cuota_n'
 
 // numeric llega como string desde la API: lo pasamos a número.
-function normalizar(m: Record<string, unknown>): Movimiento {
+export function normalizar(m: Record<string, unknown>): Movimiento {
   return { ...(m as Movimiento), monto: Number(m.monto), cantidad: m.cantidad == null ? null : Number(m.cantidad) }
 }
 

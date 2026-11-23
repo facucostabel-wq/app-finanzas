@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase'
 import { calcularTenencias } from '../lib/tenencias'
 import { useInversiones } from '../lib/datos'
 import InputNumero from '../components/InputNumero'
+import { useIaActiva } from '../lib/ia'
 
 type Fuente = 'auto' | 'manual'
 const parsePrecio = (t: string) => parseNumero(t, 8)
@@ -21,6 +22,7 @@ export default function Cierre() {
   const [params, setParams] = useSearchParams()
   const mes = params.get('mes') ?? moverMes(mesActual(), -1)
   const esActual = mes === mesActual()
+  const { activa: iaActiva } = useIaActiva()
   const { hasta } = rangoMes(mes)
   const { perfil } = usePerfil()
 
@@ -365,6 +367,11 @@ export default function Cierre() {
       <button className="primary boton-ancho" onClick={guardar} disabled={busy || trayendo}>
         {busy ? 'Guardando…' : existente ? `Guardar cambios de ${nombreDelMes}` : `Cerrar ${nombreDelMes}`}
       </button>
+      {iaActiva && (
+        <Link to={`/ia?mes=${mes}`} className="boton-ia">
+          <Sparkles size={18} aria-hidden="true" /> Analizar {nombreDelMes} con IA
+        </Link>
+      )}
       <BottomNav />
     </main>
   )

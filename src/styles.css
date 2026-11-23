@@ -850,3 +850,17 @@ a.boton-icono { text-decoration: none; }
 }
 .pendientes-flecha { color: var(--muted); transition: transform 0.2s; }
 .pendientes.abierto .pendientes-flecha { transform: rotate(180deg); }
+
+/* ===== Análisis con IA ===== */
+.ia .card { margin-bottom: 14px; }
+.ia h2 { margin: 0 0 8px; font-size: 1.02rem; }
+.ia ul, .ia ol { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 8px; line-height: 1.4; font-size: 0.92rem; }
+.ia-privacidad .primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.ia-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.ia-botones button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.ia .selector-mes { margin: 4px 0 6px; }
+.ia-desactivar { display: block; margin: 4px auto 16px; color: var(--muted); }
+.boton-ia {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 13px;
+  border-radius: 14px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; text-decoration: none;
+}

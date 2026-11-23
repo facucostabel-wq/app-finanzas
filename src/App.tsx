@@ -18,6 +18,7 @@ import Unirse from './pages/Unirse'
 import Bienvenida from './pages/Bienvenida'
 import CuentaForm from './pages/CuentaForm'
 import Demo from './pages/Demo'
+import Ia from './pages/Ia'
 import Home from './pages/Home'
 import Inversiones from './pages/Inversiones'
 import Login from './pages/Login'
@@ -134,6 +135,7 @@ export default function App() {
       <Route path="/objetivos/:id" element={protegida(<ObjetivoDetalle />)} />
       <Route path="/objetivos/:id/editar" element={protegida(<ObjetivoForm />)} />
       <Route path="/cierre" element={protegida(<Cierre />)} />
+      <Route path="/ia" element={protegida(<Ia />)} />
       <Route path="/ajustes" element={protegida(<Ajustes />)} />
       <Route path="/ajustes/:seccion" element={protegida(<Ajustes />)} />
       <Route path="/grupos" element={protegida(<Grupos />)} />
