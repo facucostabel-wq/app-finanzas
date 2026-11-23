@@ -4,10 +4,11 @@ import BottomNav from '../components/BottomNav'
 import BotonMenu from '../components/BotonMenu'
 import Combobox, { type Opcion } from '../components/Combobox'
 import IconoCategoria from '../components/IconoCategoria'
-import { Funnel } from 'lucide-react'
+import { CalendarDays, Funnel, List } from 'lucide-react'
 import { TEXTO_FORMA_PAGO, TEXTO_TIPO, TEXTO_TIPO_CUENTA, useActivos, useCategorias, nombreCuenta, useCuentas, useMovimientosDelMes, useSaldosCuentas, type Movimiento } from '../lib/datos'
 import { supabase } from '../lib/supabase'
-import { formatCantidad, formatMonto, formatPrecio, mesActual, nombreDia, nombreMes } from '../lib/format'
+import { formatCantidad, formatMonto, formatPrecio, hoyISO, mesActual, nombreDia, nombreMes } from '../lib/format'
+import { usePerfil } from '../lib/perfil'
 import { nombreCortoMoneda } from '../lib/monedas'
 import { SelectorMes, useMes } from '../lib/mes'
 
@@ -39,6 +40,24 @@ export default function Movimientos() {
   const filtroCuenta = params.get('cuenta') ?? ''
   const filtroMoneda = filtroCuenta ? (params.get('moneda') ?? '') : ''
   const hayFiltro = Boolean(filtroCategoria || filtroCuenta)
+  // Vista lista o calendario (se recuerda en el dispositivo).
+  const [vista, setVista] = useState<'lista' | 'calendario'>(() => {
+    try {
+      return localStorage.getItem('vista_movimientos') === 'calendario' ? 'calendario' : 'lista'
+    } catch {
+      return 'lista'
+    }
+  })
+  const cambiarVista = (v: 'lista' | 'calendario') => {
+    setVista(v)
+    try {
+      localStorage.setItem('vista_movimientos', v)
+    } catch {
+      /* nada */
+    }
+  }
+  const [diaElegido, setDiaElegido] = useState<string | null>(null)
+  const { perfil } = usePerfil()
   const [verFiltros, setVerFiltros] = useState(hayFiltro)
   function cambiarFiltro(clave: 'categoria' | 'cuenta', valor: string) {
     const nuevos = new URLSearchParams(params)
@@ -115,11 +134,51 @@ export default function Movimientos() {
 
   // Agrupa por día (ya vienen ordenados del más reciente al más viejo).
   const dias: { fecha: string; items: Movimiento[] }[] = []
+  const porFecha = new Map<string, Movimiento[]>()
   for (const m of filtrados) {
-    const ultimo = dias[dias.length - 1]
-    if (ultimo?.fecha === m.fecha) ultimo.items.push(m)
-    else dias.push({ fecha: m.fecha, items: [m] })
+    if (!porFecha.has(m.fecha)) {
+      porFecha.set(m.fecha, [])
+      dias.push({ fecha: m.fecha, items: porFecha.get(m.fecha)! })
+    }
+    porFecha.get(m.fecha)!.push(m)
   }
+
+  const renderDia = (d: { fecha: string; items: Movimiento[] }) => (
+          <section key={d.fecha} className="dia">
+            <h2 className="dia-titulo">{nombreDia(d.fecha)}</h2>
+            <ul className="lista card">
+              {d.items.map((m) => (
+                <li key={m.id}>
+                  <Link to={`/movimiento/${m.id}`} className="fila fila-mov">
+                    <IconoCategoria nombre={tituloMov(m)} tipo={m.tipo} icono={m.categoria_id ? iconos.get(m.categoria_id) : null} />
+                    <div className="mov-texto">
+                      <div className="mov-titulo">
+                        {tituloMov(m)}
+                        {m.activo_id && <span className="muted"> · {nombresActivo.get(m.activo_id)}</span>}
+                      </div>
+                      <div className="muted chico mov-detalle">
+                        {m.tipo === 'transferencia'
+                          ? `${cuenta.get(m.cuenta_id) ? nombreCuenta(cuenta.get(m.cuenta_id)!) : '—'} → ${cuenta.get(m.cuenta_destino_id ?? '') ? nombreCuenta(cuenta.get(m.cuenta_destino_id!)!) : '—'}`
+                          : ((cuenta.get(m.cuenta_id) && nombreCuenta(cuenta.get(m.cuenta_id)!)) ??
+                            (m.forma_pago ? TEXTO_FORMA_PAGO[m.forma_pago] : TEXTO_TIPO[m.tipo]))}
+                        {m.cuota_n && m.compra_id
+                          ? `, cuota ${m.cuota_n}${totalCuotas.get(m.compra_id) ? ` de ${totalCuotas.get(m.compra_id)}` : ''}`
+                          : ''}
+                        {m.cantidad
+                          ? ` · ${formatCantidad(m.cantidad)} a ${formatPrecio(m.monto / m.cantidad, m.moneda)}`
+                          : ''}
+                        {m.nota ? ` · ${m.nota}` : ''}
+                      </div>
+                    </div>
+                    <div className={`monto ${m.tipo}`}>
+                      {SIGNO[m.tipo]} {formatMonto(m.monto, m.moneda)}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+  )
 
   return (
     <main className="screen con-nav">
@@ -140,6 +199,14 @@ export default function Movimientos() {
         </button>
       </header>
       <SelectorMes />
+      <div className="segmentado chico vista-mov" role="group" aria-label="Vista">
+        <button aria-pressed={vista === 'lista'} onClick={() => cambiarVista('lista')}>
+          <List size={16} aria-hidden="true" /> Lista
+        </button>
+        <button aria-pressed={vista === 'calendario'} onClick={() => cambiarVista('calendario')}>
+          <CalendarDays size={16} aria-hidden="true" /> Calendario
+        </button>
+      </div>
 
       {verFiltros && (
         <section className="card filtros">
@@ -176,46 +243,95 @@ export default function Movimientos() {
       {loading ? (
         <p className="muted">Cargando…</p>
       ) : dias.length === 0 ? (
-        <p className="muted">{hayFiltro ? 'No hay movimientos con ese filtro en este mes.' : 'No hay movimientos en este mes.'}</p>
+        vista === 'lista' || !dias.length ? (
+          <p className="muted">{hayFiltro ? 'No hay movimientos con ese filtro en este mes.' : 'No hay movimientos en este mes.'}</p>
+        ) : null
       ) : (
-        dias.map((d) => (
-          <section key={d.fecha} className="dia">
-            <h2 className="dia-titulo">{nombreDia(d.fecha)}</h2>
-            <ul className="lista card">
-              {d.items.map((m) => (
-                <li key={m.id}>
-                  <Link to={`/movimiento/${m.id}`} className="fila fila-mov">
-                    <IconoCategoria nombre={tituloMov(m)} tipo={m.tipo} icono={m.categoria_id ? iconos.get(m.categoria_id) : null} />
-                    <div className="mov-texto">
-                      <div className="mov-titulo">
-                        {tituloMov(m)}
-                        {m.activo_id && <span className="muted"> · {nombresActivo.get(m.activo_id)}</span>}
-                      </div>
-                      <div className="muted chico mov-detalle">
-                        {m.tipo === 'transferencia'
-                          ? `${cuenta.get(m.cuenta_id) ? nombreCuenta(cuenta.get(m.cuenta_id)!) : '—'} → ${cuenta.get(m.cuenta_destino_id ?? '') ? nombreCuenta(cuenta.get(m.cuenta_destino_id!)!) : '—'}`
-                          : ((cuenta.get(m.cuenta_id) && nombreCuenta(cuenta.get(m.cuenta_id)!)) ??
-                            (m.forma_pago ? TEXTO_FORMA_PAGO[m.forma_pago] : TEXTO_TIPO[m.tipo]))}
-                        {m.cuota_n && m.compra_id
-                          ? `, cuota ${m.cuota_n}${totalCuotas.get(m.compra_id) ? ` de ${totalCuotas.get(m.compra_id)}` : ''}`
-                          : ''}
-                        {m.cantidad
-                          ? ` · ${formatCantidad(m.cantidad)} a ${formatPrecio(m.monto / m.cantidad, m.moneda)}`
-                          : ''}
-                        {m.nota ? ` · ${m.nota}` : ''}
-                      </div>
-                    </div>
-                    <div className={`monto ${m.tipo}`}>
-                      {SIGNO[m.tipo]} {formatMonto(m.monto, m.moneda)}
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        vista === 'lista' ? (
+          dias.map((d) => renderDia(d))
+        ) : (
+          <Calendario
+            mes={mes}
+            movimientos={filtrados}
+            moneda={perfil?.monedas_favoritas?.[0] ?? 'ARS'}
+            elegido={diaElegido}
+            onElegir={(f) => setDiaElegido(f === diaElegido ? null : f)}
+          >
+            {diaElegido && (dias.find((d) => d.fecha === diaElegido) ? renderDia(dias.find((d) => d.fecha === diaElegido)!) : <p className="muted">Sin movimientos ese día.</p>)}
+          </Calendario>
+        )
       )}
       <BottomNav />
     </main>
+  )
+}
+
+const corto = (n: number) =>
+  n >= 1e6 ? `${(n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(Math.round(n))
+
+/** El mes en grilla: lo gastado cada día (más intenso, más gasto) y un punto si hubo ingresos. */
+function Calendario(props: {
+  mes: string
+  movimientos: Movimiento[]
+  moneda: string
+  elegido: string | null
+  onElegir: (fecha: string) => void
+  children: React.ReactNode
+}) {
+  const { mes, movimientos, moneda, elegido, onElegir, children } = props
+  const [y, m] = mes.split('-').map(Number)
+  const diasMes = new Date(y, m, 0).getDate()
+  const offset = (new Date(y, m - 1, 1).getDay() + 6) % 7 // lunes primero
+  const gasto = new Map<string, number>()
+  const otras = new Set<string>()
+  const ingreso = new Set<string>()
+  for (const x of movimientos) {
+    if (x.tipo === 'gasto') {
+      if (x.moneda === moneda) gasto.set(x.fecha, (gasto.get(x.fecha) ?? 0) + x.monto)
+      else otras.add(x.fecha)
+    }
+    if (x.tipo === 'ingreso') ingreso.add(x.fecha)
+  }
+  const max = Math.max(0, ...gasto.values())
+  const total = [...gasto.values()].reduce((a, b) => a + b, 0)
+  const hoy = hoyISO()
+  const celdas: (string | null)[] = [...Array(offset).fill(null), ...Array.from({ length: diasMes }, (_, i) => `${mes}-${String(i + 1).padStart(2, '0')}`)]
+  return (
+    <section className="calendario">
+      <div className="calendario-grilla" role="grid" aria-label={`Gastos de ${nombreMes(mes)}`}>
+        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
+          <span key={i} className="calendario-dia-semana" aria-hidden="true">
+            {d}
+          </span>
+        ))}
+        {celdas.map((f, i) => {
+          if (!f) return <span key={`v${i}`} />
+          const g = gasto.get(f) ?? 0
+          const intensidad = max ? g / max : 0
+          return (
+            <button
+              key={f}
+              className={`calendario-celda ${f === elegido ? 'elegida' : ''} ${f === hoy ? 'hoy' : ''} ${f > hoy ? 'futura' : ''}`}
+              style={g ? { background: `color-mix(in srgb, var(--accent) ${Math.round(10 + intensidad * 45)}%, transparent)` } : undefined}
+              onClick={() => onElegir(f)}
+              aria-label={`${nombreDia(f)}: ${g ? formatMonto(g, moneda) : 'sin gastos'}`}
+              aria-pressed={f === elegido}
+            >
+              <span className="calendario-numero">{Number(f.slice(8))}</span>
+              <span className="calendario-monto">{g ? corto(g) : ''}</span>
+              <span className="calendario-puntos" aria-hidden="true">
+                {ingreso.has(f) && <i className="punto-ingreso" />}
+                {otras.has(f) && <i className="punto-otra" />}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <p className="muted chico calendario-leyenda">
+        Gastos en {moneda} por día ({formatMonto(total, moneda)} en el mes). <i className="punto-ingreso" /> ingreso{' '}
+        <i className="punto-otra" /> gasto en otra moneda. Tocá un día para ver el detalle.
+      </p>
+      {children}
+    </section>
   )
 }

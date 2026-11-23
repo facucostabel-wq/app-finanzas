@@ -22,6 +22,9 @@ import { MONEDAS, nombreMoneda } from '../lib/monedas'
 import { usePerfil } from '../lib/perfil'
 import { supabase } from '../lib/supabase'
 import InputNumero from '../components/InputNumero'
+import { useTiposHoy } from '../lib/cotizaciones'
+import { useMovimientosDelMes } from '../lib/datos'
+import { estadoPresupuestos, usePresupuestos } from '../lib/presupuestos'
 
 type TipoPantalla = 'gasto' | 'ingreso' | 'inversion' | 'transferencia'
 
@@ -249,6 +252,35 @@ export default function MovimientoForm() {
         (esTransferencia ? m.cuenta_destino_id === destinoId : m.categoria_id === categoriaId),
     )
   const avisoFechaFutura = avisoFecha(fecha)
+
+  // Presupuesto: aviso suave si con este gasto te acercás (80%) o te pasás del tope del mes.
+  const { presupuestos } = usePresupuestos()
+  const { movimientos: movsMesFecha } = useMovimientosDelMes(fecha.slice(0, 7))
+  const tiposPresu = useTiposHoy(['USD', moneda, ...presupuestos.map((p) => p.moneda)])
+  let avisoPresupuesto: string | null = null
+  if (tipoMovimiento === 'gasto' && monto && presupuestos.length) {
+    const esteMonto = valorCuota ?? monto
+    const otros = movsMesFecha.filter((m) => m.id !== id && !(compraId && m.compra_id === compraId))
+    const nuevo = { ...(otros[0] ?? {}), id: 'nuevo', tipo: 'gasto', monto: esteMonto, moneda, categoria_id: categoriaId } as Movimiento
+    const antes = estadoPresupuestos(presupuestos, otros, tiposPresu)
+    const despues = estadoPresupuestos(presupuestos, [...otros, nuevo], tiposPresu)
+    const relevantes = despues
+      .map((d, i) => ({ d, a: antes[i] }))
+      .filter(({ d }) => d.presupuesto.categoria_id === null || d.presupuesto.categoria_id === categoriaId)
+      .filter(({ d }) => d.limite > 0 && d.uso !== null && d.uso >= 0.8)
+      .sort((x, y) => Number(x.d.presupuesto.categoria_id === null) - Number(y.d.presupuesto.categoria_id === null))
+    const r = relevantes[0]
+    if (r) {
+      const nombre = r.d.presupuesto.categoria_id
+        ? `de ${categorias.find((c) => c.id === r.d.presupuesto.categoria_id)?.nombre ?? 'la categoría'}`
+        : 'general'
+      const m = r.d.presupuesto.moneda
+      avisoPresupuesto =
+        r.d.uso! > 1
+          ? `Con esto ${r.a.uso !== null && r.a.uso > 1 ? 'seguís pasado' : 'te pasás'} del presupuesto ${nombre}: ${formatMonto(Math.round(r.d.gastado * 100) / 100, m)} de ${formatMonto(Math.round(r.d.limite * 100) / 100, m)}.`
+          : `Con esto llegás al ${Math.round(r.d.uso! * 100)}% del presupuesto ${nombre}.`
+    }
+  }
 
   // Movimiento nuevo: propone la última cuenta usada para este tipo.
   useEffect(() => {
@@ -618,6 +650,7 @@ export default function MovimientoForm() {
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </label>
         {avisoFechaFutura && <Aviso>{avisoFechaFutura}</Aviso>}
+        {avisoPresupuesto && <Aviso>{avisoPresupuesto}</Aviso>}
         {duplicado && <Aviso>Ya cargaste uno igual ese día (mismo monto, {esTransferencia ? 'cuentas' : 'categoría y cuenta'}).</Aviso>}
 
         <label>

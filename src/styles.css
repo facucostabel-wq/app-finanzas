@@ -877,3 +877,60 @@ a.boton-icono { text-decoration: none; }
 .aviso-politica-acciones button {
   background: var(--accent); color: var(--accent-text); border: 0; border-radius: 999px; padding: 7px 16px; font-weight: 700;
 }
+
+/* ===== Presupuestos ===== */
+.presupuesto-pista { display: block; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.presupuesto-barra { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.cerca .presupuesto-barra { background: #e0a526; }
+.pasado .presupuesto-barra { background: var(--error); }
+.presupuesto-uso { display: grid; gap: 5px; margin-top: 6px; }
+.presupuesto-numeros { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); flex-wrap: wrap; }
+.pasado .presupuesto-numeros span:last-child { color: var(--error); font-weight: 600; }
+.cerca .presupuesto-numeros span:last-child { color: #c98a0c; font-weight: 600; }
+.presupuesto-mini { display: inline-flex; align-items: center; gap: 8px; min-width: 92px; }
+.presupuesto-mini .presupuesto-pista { width: 52px; }
+.presupuesto-general {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--accent-suave); color: var(--accent); font-weight: 800; font-size: 1.1rem;
+}
+.presupuestos-resumen ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.presupuesto-resumen-fila { display: flex; gap: 12px; align-items: center; color: var(--text); text-decoration: none; }
+.presupuesto-resumen-fila .categoria-cuerpo { flex: 1; min-width: 0; }
+.presupuestos-lista { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+.presupuesto-fila { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.presupuesto-cabecera {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; background: none; border: 0;
+  color: var(--text); text-align: left; font-size: 0.98rem;
+}
+.presupuesto-texto { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.presupuesto-editor { display: grid; gap: 10px; padding: 0 14px 14px; }
+.presupuesto-valor { display: flex; align-items: center; gap: 8px; }
+.presupuesto-valor input { flex: 1; min-width: 0; }
+.presupuesto-valor select { width: auto; }
+.presupuesto-acciones { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.presupuesto-acciones .primary { margin-left: auto; padding: 10px 22px; }
+.peligro-texto { color: var(--error); }
+@media (prefers-color-scheme: light) {
+  .cerca .presupuesto-barra { background: #d9940f; }
+  .cerca .presupuesto-numeros span:last-child { color: #9a6400; }
+}
+
+/* ===== Calendario de movimientos ===== */
+.vista-mov { margin: 0 0 14px; }
+.vista-mov button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.calendario-grilla { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.calendario-dia-semana { text-align: center; font-size: 0.72rem; color: var(--muted); padding: 2px 0 4px; }
+.calendario-celda {
+  display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 1px; min-height: 52px; padding: 5px 2px 4px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.calendario-celda.hoy { border-color: var(--accent); }
+.calendario-celda.elegida { outline: 2px solid var(--accent); outline-offset: 1px; }
+.calendario-celda.futura { opacity: 0.5; }
+.calendario-numero { font-size: 0.78rem; font-weight: 600; }
+.calendario-monto { font-size: 0.68rem; font-weight: 600; align-self: center; }
+.calendario-puntos { display: flex; gap: 3px; height: 5px; }
+.punto-ingreso, .punto-otra { display: inline-block; width: 5px; height: 5px; border-radius: 50%; vertical-align: middle; }
+.punto-ingreso { background: var(--info); }
+.punto-otra { background: #e0a526; }
+.calendario-leyenda { margin: 10px 0 14px; line-height: 1.5; }

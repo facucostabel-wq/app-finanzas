@@ -7,6 +7,9 @@ import { Aviso } from '../lib/avisos'
 import { BotonOjo, Oculto } from '../lib/ocultar'
 import BotonMenu from '../components/BotonMenu'
 import TarjetaObjetivo from '../components/TarjetaObjetivo'
+import BarraPresupuesto from '../components/BarraPresupuesto'
+import { useTiposHoy } from '../lib/cotizaciones'
+import { estadoPresupuestos, usePresupuestos } from '../lib/presupuestos'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { calcularPlan, calcularProgreso, reservadoEnDisponible } from '../lib/objetivos'
 import {
@@ -51,6 +54,7 @@ export default function Home() {
   const [verCalculo, setVerCalculo] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
   const obj = useObjetivosConContexto()
+  const { presupuestos } = usePresupuestos()
   const mesAnterior = moverMes(mesActual(), -1)
   const [cierreOculto, setCierreOculto] = useState(() => {
     try {
@@ -133,6 +137,14 @@ export default function Home() {
   const quedaron = t ? t.ingresos - t.gastos : 0
   const proporcion = t && t.ingresos > 0 ? Math.min(t.gastos / t.ingresos, 1) : null
   const hayDetalle = t && (t.aportes || t.rescates || t.usadoEnDivisas || t.pagosTarjeta)
+
+  // Presupuestos del mes que se está mirando: el general primero, después de más a menos usado.
+  const tiposPresu = useTiposHoy(['USD', ...presupuestos.map((p) => p.moneda), ...movimientos.map((m) => m.moneda)])
+  const estados = estadoPresupuestos(presupuestos, movimientos, tiposPresu).sort(
+    (a, b) =>
+      Number(a.presupuesto.categoria_id !== null) - Number(b.presupuesto.categoria_id !== null) || (b.uso ?? 0) - (a.uso ?? 0),
+  )
+  const nombreCategoria = new Map(categorias.map((c) => [c.id, c]))
 
   const porCategoria = gastosPorCategoria(movimientos, moneda, categorias)
   const visibles = verTodas ? porCategoria : porCategoria.slice(0, 5)
@@ -424,10 +436,54 @@ export default function Home() {
             ) : null}
           </section>
 
+          {/* Presupuestos del mes */}
+          {estados.length > 0 && (
+            <section className="bloque-plano presupuestos-resumen" aria-labelledby="presu-titulo">
+              <div className="titulo-con-accion">
+                <h2 id="presu-titulo">Presupuestos</h2>
+                <Link to="/presupuestos" className="link-discreto">
+                  Editar
+                </Link>
+              </div>
+              <ul>
+                {estados.map((e) => {
+                  const cat = e.presupuesto.categoria_id ? nombreCategoria.get(e.presupuesto.categoria_id) : null
+                  return (
+                    <li key={e.presupuesto.id}>
+                      <Link
+                        to={cat ? `/movimientos?categoria=${cat.id}` : '/movimientos'}
+                        className="presupuesto-resumen-fila"
+                      >
+                        {cat ? (
+                          <IconoCategoria nombre={cat.nombre} tipo="gasto" icono={cat.icono} />
+                        ) : (
+                          <span className="presupuesto-general" aria-hidden="true">
+                            Σ
+                          </span>
+                        )}
+                        <div className="categoria-cuerpo">
+                          <span>{cat ? cat.nombre : 'General'}</span>
+                          <BarraPresupuesto estado={e} />
+                        </div>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )}
+
           {/* 3. En qué se fue la plata. */}
           {porCategoria.length > 0 && (
             <section className="bloque-plano" aria-labelledby="cat-titulo">
-              <h2 id="cat-titulo">En qué gastaste</h2>
+              <div className="titulo-con-accion">
+                <h2 id="cat-titulo">En qué gastaste</h2>
+                {estados.length === 0 && (
+                  <Link to="/presupuestos" className="link-discreto">
+                    Poner presupuestos
+                  </Link>
+                )}
+              </div>
               <ul className="categorias">
                 {visibles.map((c) => (
                   <li key={c.id}>
