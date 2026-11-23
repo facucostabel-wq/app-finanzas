@@ -963,3 +963,28 @@ a.boton-icono { text-decoration: none; }
 .fechas-evento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .nueva-etiqueta { margin: 14px 0; }
 .etiqueta-hero { margin: 10px 0 18px; }
+
+/* ===== Patrimonio ===== */
+.tarjeta-patrimonio {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin: 0 0 18px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none;
+}
+.tarjeta-patrimonio-icono { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-suave); color: var(--accent); flex-shrink: 0; }
+.tarjeta-patrimonio-texto { display: grid; gap: 1px; flex: 1; }
+.tarjeta-patrimonio-texto strong { font-size: 1.15rem; }
+.patrimonio-grafico { display: flex; align-items: flex-end; justify-content: center; gap: 6px; height: 190px; margin: 18px 0 14px; padding: 0 2px; }
+.patrimonio-columna { flex: 1; min-width: 0; max-width: 64px; height: 100%; display: grid; grid-template-rows: 1fr auto; gap: 6px; background: none; border: 0; padding: 0; color: var(--muted); }
+.patrimonio-barra-pista { display: flex; align-items: flex-end; height: 100%; }
+.patrimonio-barra { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: color-mix(in srgb, var(--accent) 40%, transparent); }
+.patrimonio-barra.negativa { background: color-mix(in srgb, var(--error) 50%, transparent); }
+.patrimonio-columna.elegida .patrimonio-barra { background: var(--accent); }
+.patrimonio-columna.elegida .patrimonio-barra.negativa { background: var(--error); }
+.patrimonio-etiqueta { font-size: 0.68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.patrimonio-columna.elegida .patrimonio-etiqueta { color: var(--text); font-weight: 700; }
+.patrimonio-detalle { display: grid; gap: 4px; }
+.patrimonio-detalle p { margin: 0; }
+.patrimonio-total { font-size: 1.7rem; font-weight: 800; }
+.patrimonio-detalle dl { margin: 10px 0 0; display: grid; gap: 8px; }
+.patrimonio-detalle dl div { display: flex; justify-content: space-between; gap: 10px; }
+.patrimonio-detalle dt { color: var(--muted); }
+.patrimonio-detalle dd { margin: 0; font-weight: 600; }

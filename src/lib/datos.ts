@@ -42,7 +42,7 @@ export type Movimiento = {
   cantidad: number | null
 }
 
-export type TipoCuenta = 'banco' | 'billetera' | 'efectivo' | 'tarjeta' | 'broker' | 'grupo'
+export type TipoCuenta = 'banco' | 'billetera' | 'efectivo' | 'tarjeta' | 'broker' | 'grupo' | 'persona'
 
 export type Cuenta = {
   id: string
@@ -71,6 +71,7 @@ export const TIPOS_CUENTA: { valor: TipoCuenta; texto: string }[] = [
 export const TEXTO_TIPO_CUENTA = {
   ...Object.fromEntries(TIPOS_CUENTA.map((t) => [t.valor, t.texto])),
   grupo: 'Grupo',
+  persona: 'Préstamo',
 } as Record<TipoCuenta, string>
 
 /** Cuentas cuyo saldo es "disponible para gastar" (no tarjetas ni brokers). */

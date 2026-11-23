@@ -132,8 +132,6 @@ export default function Cierre() {
   }
   let enCuentas = 0
   for (const s of saldos) {
-    const tipo = cuentas.find((c) => c.id === s.cuenta_id)?.tipo
-    if (tipo === 'grupo') continue
     const v = usd(s.monto, s.moneda)
     if (v === null) sinConvertir = true
     enCuentas += v ?? 0
@@ -359,7 +357,7 @@ export default function Cierre() {
             {sinPrecio > 0 && `${sinPrecio === 1 ? '1 inversión' : `${sinPrecio} inversiones`} sin precio cuenta${sinPrecio === 1 ? '' : 'n'} por lo que pagaste.`}
           </p>
         )}
-        <p className="muted chico">El patrimonio descuenta lo que debés de tarjetas.</p>
+        <p className="muted chico">El patrimonio descuenta lo que debés de tarjetas y suma (o resta) lo que te deben o debés en grupos y préstamos.</p>
       </section>
 
       {error && <p className="error">{error}</p>}

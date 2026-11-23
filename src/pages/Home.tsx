@@ -10,6 +10,8 @@ import TarjetaObjetivo from '../components/TarjetaObjetivo'
 import BarraPresupuesto from '../components/BarraPresupuesto'
 import { useTiposHoy } from '../lib/cotizaciones'
 import { estadoPresupuestos, usePresupuestos } from '../lib/presupuestos'
+import { usePatrimonio } from '../lib/patrimonio'
+import { Landmark } from 'lucide-react'
 import { useObjetivosConContexto } from '../lib/contextoObjetivos'
 import { calcularPlan, calcularProgreso, reservadoEnDisponible } from '../lib/objetivos'
 import {
@@ -55,6 +57,9 @@ export default function Home() {
   const [verTodas, setVerTodas] = useState(false)
   const obj = useObjetivosConContexto()
   const { presupuestos } = usePresupuestos()
+  const patri = usePatrimonio()
+  const patriPrevio = patri.puntos.length > 1 ? patri.puntos[patri.puntos.length - 2] : null
+  const patriDif = patri.hoy && patriPrevio && Math.abs(patriPrevio.total) > 0.005 ? ((patri.hoy.total - patriPrevio.total) / Math.abs(patriPrevio.total)) * 100 : null
   const mesAnterior = moverMes(mesActual(), -1)
   const [cierreOculto, setCierreOculto] = useState(() => {
     try {
@@ -333,6 +338,29 @@ export default function Home() {
             ✕
           </button>
         </div>
+      )}
+
+      {esMesActual && patri.hoy && (
+        <Link to="/patrimonio" className="tarjeta-patrimonio">
+          <span className="tarjeta-patrimonio-icono" aria-hidden="true">
+            <Landmark size={20} />
+          </span>
+          <span className="tarjeta-patrimonio-texto">
+            <span className="muted chico">Patrimonio</span>
+            <strong>
+              <Oculto>{formatMonto(Math.round(patri.hoy.total * 100) / 100, 'USD')}</Oculto>
+            </strong>
+          </span>
+          {patriDif !== null && (
+            <span className={`chico ${patriDif >= 0 ? 'positivo' : 'negativo'}`}>
+              {patriDif >= 0 ? '▲' : '▼'} {Math.abs(patriDif).toLocaleString('es-AR', { maximumFractionDigits: 1 })}%
+              <span className="muted"> vs {nombreMes(patriPrevio!.mes).split(' ')[0].toLowerCase().slice(0, 3)}</span>
+            </span>
+          )}
+          <span className="menu-flecha" aria-hidden="true">
+            ›
+          </span>
+        </Link>
       )}
 
       {objetivosVigentes.length > 0 && (

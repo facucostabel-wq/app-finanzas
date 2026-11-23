@@ -22,6 +22,7 @@ import Demo from './pages/Demo'
 import Ia from './pages/Ia'
 import Presupuestos from './pages/Presupuestos'
 import Etiquetas, { EtiquetaDetalle } from './pages/Etiquetas'
+import Patrimonio from './pages/Patrimonio'
 import Home from './pages/Home'
 import Inversiones from './pages/Inversiones'
 import Login from './pages/Login'
@@ -142,6 +143,7 @@ export default function App() {
       <Route path="/ia" element={protegida(<Ia />)} />
       <Route path="/presupuestos" element={protegida(<Presupuestos />)} />
       <Route path="/etiquetas" element={protegida(<Etiquetas />)} />
+      <Route path="/patrimonio" element={protegida(<Patrimonio />)} />
       <Route path="/etiquetas/:id" element={protegida(<EtiquetaDetalle />)} />
       <Route path="/ajustes" element={protegida(<Ajustes />)} />
       <Route path="/ajustes/:seccion" element={protegida(<Ajustes />)} />
