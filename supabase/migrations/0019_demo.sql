@@ -63,6 +63,8 @@ declare
   gr uuid; yo uuid; juli uuid; tomi uuid; caro uuid;
   gasto uuid;
   f date;
+  etq uuid;
+  c_lu uuid;
 begin
   if uid is null or not public.es_demo(uid) then
     raise exception 'Solo para la demo' using errcode = '42501';
@@ -214,6 +216,23 @@ begin
   values (gr, caro, yo, 120000, 'ARS', f + 3, uid) returning id into gasto;
   insert into public.movimientos (usuario_id, fecha, tipo, monto, moneda, cuenta_id, cuenta_destino_id, nota, liquidacion_id)
   values (uid, f + 3, 'transferencia', 120000, 'ARS', c_grupo, c_mp, 'Caro me pagó la cabaña', gasto);
+
+  -- Presupuestos: uno general y dos por categoría.
+  insert into public.presupuestos (usuario_id, categoria_id, tipo, porcentaje) values (uid, null, 'porcentaje', 75);
+  insert into public.presupuestos (usuario_id, categoria_id, tipo, monto) values
+    (uid, g_salidas, 'monto', 200000),
+    (uid, g_super, 'monto', 260000);
+
+  -- Evento "Bariloche" con los gastos del viaje.
+  insert into public.etiquetas (usuario_id, nombre, desde, hasta) values (uid, 'Bariloche', f, f + 3) returning id into etq;
+  insert into public.etiquetado (usuario_id, etiqueta_id, movimiento_id)
+  select uid, etq, id from public.movimientos where usuario_id = uid and gasto_grupo_id is not null and tipo = 'gasto';
+
+  -- Una deuda 1 a 1: le prestaste a Lu y te devolvió una parte.
+  insert into public.cuentas (usuario_id, nombre, tipo, orden) values (uid, 'Lu', 'persona', 900) returning id into c_lu;
+  m := (date_trunc('month', hoy) - interval '1 month')::date;
+  perform public.demo_mov(uid, m + 8, 'transferencia', 40000, 'ARS', null, c_banco, 'Para el regalo de cumple', destino => c_lu);
+  perform public.demo_mov(uid, m + 21, 'transferencia', 15000, 'ARS', null, c_lu, null, destino => c_mp);
 end;
 $$;
 revoke all on function public.crear_demo() from public, anon;

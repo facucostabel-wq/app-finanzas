@@ -15,6 +15,7 @@ import { mesActual, moverMes, nombreMes, rangoMes, type Mes, type Moneda } from 
 import { calcularProgreso, type Aporte, type Objetivo, type Vinculo } from './objetivos'
 import { supabase } from './supabase'
 import { calcularTenencias } from './tenencias'
+import { estadoPresupuestos, type Presupuesto } from './presupuestos'
 
 // ============================================================
 // Activación (el usuario acepta que sus datos salgan hacia una IA externa)
@@ -141,7 +142,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
   const { desde, hasta } = rangoMes(mes)
   const desdeHistorico = `${moverMes(mes, -11)}-01`
 
-  const [cats, ctas, acts, movs, sal, futuras, val, objs, vins, aps, cierres] = await Promise.all([
+  const [cats, ctas, acts, movs, sal, futuras, val, objs, vins, aps, cierres, presu, etqs, etqd] = await Promise.all([
     supabase.from('categorias').select('*'),
     supabase.from('cuentas').select('*').order('orden'),
     supabase.from('activos').select('*'),
@@ -153,6 +154,9 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
     supabase.from('objetivo_vinculos').select('id, objetivo_id, cuenta_id, activo_id, moneda'),
     supabase.from('objetivo_aportes').select('id, objetivo_id, fecha, monto, moneda, cuenta_id, nota').lt('fecha', hasta),
     traerCierres(),
+    supabase.from('presupuestos').select('id, categoria_id, tipo, monto, porcentaje, moneda'),
+    supabase.from('etiquetas').select('id, nombre, desde, hasta'),
+    supabase.from('etiquetado').select('etiqueta_id, movimiento_id, compra_id'),
   ])
 
   // Sin categorías o cuentas el reporte saldría lleno de "—": mejor avisar el error.
@@ -192,11 +196,21 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
   const nombreCat = (id: string | null) => t(catPorId.get(id ?? '')?.nombre ?? 'Sin categoría')
   const actPorId = new Map(activos.map((a) => [a.id, a]))
   const ctaPorId = new Map(cuentas.map((c) => [c.id, c]))
+  // Las personas de las deudas 1 a 1 van sin nombre: "Persona 1", "Persona 2"…
+  const numPersona = new Map(cuentas.filter((c) => c.tipo === 'persona').map((c, i) => [c.id, i + 1]))
   const nomCuenta = (id: string | null) => {
     const c = id ? ctaPorId.get(id) : undefined
     if (!c) return '—'
+    if (c.tipo === 'persona') return `Persona ${numPersona.get(c.id)} (deuda 1 a 1)`
     return c.tipo === 'grupo' ? `Grupo "${nombreCuenta(c).replace(/^Grupo /, '')}"` : c.nombre
   }
+  // Etiquetas de cada movimiento (propias o de su compra en cuotas).
+  const etiquetas = (etqs.data ?? []) as { id: string; nombre: string; desde: string | null; hasta: string | null }[]
+  const etiquetado = (etqd.data ?? []) as { etiqueta_id: string; movimiento_id: string | null; compra_id: string | null }[]
+  const etiquetasDe = (m: { id: string; compra_id: string | null }) =>
+    etiquetas.filter((e) =>
+      etiquetado.some((x) => x.etiqueta_id === e.id && (x.movimiento_id === m.id || (m.compra_id && x.compra_id === m.compra_id))),
+    )
 
   // Cotizaciones del mes: las del cierre; si no hay, hoy (mes en curso) o las del último día hábil.
   const cierreMes = cierres.find((c) => c.mes.slice(0, 7) === mes)
@@ -425,6 +439,63 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
     )
   }
 
+  // Presupuestos
+  const presupuestos = ((presu.data ?? []) as Presupuesto[]).map((p) => ({
+    ...p,
+    monto: p.monto === null ? null : Number(p.monto),
+    porcentaje: p.porcentaje === null ? null : Number(p.porcentaje),
+  }))
+  if (presupuestos.length) {
+    out.push('**Presupuestos del mes (presupuestado contra gastado):**')
+    out.push('')
+    const estados = estadoPresupuestos(presupuestos, delMes, tipos).sort(
+      (a, b) => Number(a.presupuesto.categoria_id !== null) - Number(b.presupuesto.categoria_id !== null),
+    )
+    out.push(
+      tabla(
+        ['Presupuesto', 'Cómo se define', 'Tope del mes', 'Gastado', 'Uso', 'Diferencia'],
+        estados.map((e) => {
+          const p = e.presupuesto
+          const dif = e.limite - e.gastado
+          return [
+            p.categoria_id ? nombreCat(p.categoria_id) : 'General (todos los gastos)',
+            p.tipo === 'monto' ? 'Monto fijo' : `${num(p.porcentaje ?? 0, 0)}% de los ingresos del mes`,
+            plata(e.limite, p.moneda),
+            plata(e.gastado, p.moneda),
+            pct(e.uso === null ? null : e.uso * 100),
+            dif >= 0 ? `sobran ${plata(dif, p.moneda)}` : `excedido en ${plata(-dif, p.moneda)}`,
+          ]
+        }),
+      ),
+    )
+  }
+
+  // Etiquetas y eventos con movimientos este mes
+  const conEtiqueta = etiquetas
+    .map((e) => ({ e, movs: delMes.filter((m) => etiquetasDe(m).some((x) => x.id === e.id)) }))
+    .filter((x) => x.movs.length)
+  if (conEtiqueta.length) {
+    out.push('**Etiquetas y eventos (gastos del mes con cada etiqueta):**')
+    out.push('')
+    out.push(
+      tabla(
+        ['Etiqueta', 'Evento', 'Gastos del mes', 'En USD', 'Movimientos'],
+        conEtiqueta.map(({ e, movs }) => {
+          const gas = movs.filter((m) => m.tipo === 'gasto')
+          const porMon = new Map<Moneda, number>()
+          for (const m of gas) porMon.set(m.moneda, (porMon.get(m.moneda) ?? 0) + m.monto)
+          return [
+            `#${t(e.nombre)}`,
+            e.desde || e.hasta ? `${e.desde ? fechaCorta(e.desde) : '…'} al ${e.hasta ? fechaCorta(e.hasta) : '…'}` : '—',
+            [...porMon].map(([mo, v]) => plata(v, mo)).join(' + ') || '—',
+            usd(gas.reduce((sum, m) => sum + aUsd(m.monto, m.moneda, m.fecha).v, 0)),
+            String(movs.length),
+          ]
+        }),
+      ),
+    )
+  }
+
   // 3. Ingresos por categoría
   out.push('## 3. Ingresos por categoría')
   out.push('')
@@ -499,6 +570,7 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
   out.push(`- Disponible (banco, billeteras y efectivo): ${grupoTotal((c) => ['banco', 'billetera', 'efectivo'].includes(c.tipo))}.`)
   out.push(`- Tarjetas (negativo = deuda del resumen): ${grupoTotal((c) => c.tipo === 'tarjeta')}.`)
   out.push(`- Grupos (positivo = me deben; negativo = debo): ${grupoTotal((c) => c.tipo === 'grupo')}.`)
+  out.push(`- Deudas 1 a 1 con personas (positivo = me deben; negativo = debo): ${grupoTotal((c) => c.tipo === 'persona')}.`)
   out.push(`- Broker (plata sin invertir): ${grupoTotal((c) => c.tipo === 'broker')}.`)
   out.push('')
 
@@ -643,20 +715,29 @@ export async function armarReporte(mes: Mes, ctx: Contexto): Promise<string> {
   out.push('')
   out.push(
     tabla(
-      ['Fecha', 'Tipo', 'Categoría', 'Subcategoría', 'Grupo', 'Cuenta', 'Monto', 'Cantidad'],
+      ['Fecha', 'Tipo', 'Categoría', 'Subcategoría', 'Grupo', 'Cuenta', 'Monto', 'Cantidad', 'Etiquetas'],
       delMes.map((m) => [
         fechaCorta(m.fecha),
         m.tipo + (m.cuota_n ? ` (cuota ${m.cuota_n})` : ''),
-        m.tipo === 'transferencia' ? (grupoDe(m) !== '—'
+        m.tipo === 'transferencia'
+          ? grupoDe(m) !== '—'
             ? 'Movimiento con el grupo'
-            : ctaPorId.get(m.cuenta_destino_id ?? '')?.tipo === 'tarjeta'
-              ? 'Pago de tarjeta'
-              : 'Entre cuentas propias') : nombreCat(m.categoria_id),
+            : ctaPorId.get(m.cuenta_destino_id ?? '')?.tipo === 'persona'
+              ? 'Préstamo: le di plata (no es gasto)'
+              : ctaPorId.get(m.cuenta_id)?.tipo === 'persona'
+                ? 'Préstamo: me dio plata (no es ingreso)'
+                : ctaPorId.get(m.cuenta_destino_id ?? '')?.tipo === 'tarjeta'
+                  ? 'Pago de tarjeta'
+                  : 'Entre cuentas propias'
+          : nombreCat(m.categoria_id),
         m.activo_id ? t(actPorId.get(m.activo_id)?.nombre ?? '—') : '—',
         grupoDe(m),
         m.tipo === 'transferencia' ? `${t(nomCuenta(m.cuenta_id))} → ${t(nomCuenta(m.cuenta_destino_id))}` : t(nomCuenta(m.cuenta_id)),
         plata(m.monto, m.moneda),
         m.cantidad ? cant(m.cantidad) : '—',
+        etiquetasDe(m)
+          .map((e) => `#${t(e.nombre)}`)
+          .join(' ') || '—',
       ]),
     ),
   )

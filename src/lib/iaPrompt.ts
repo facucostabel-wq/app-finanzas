@@ -3,7 +3,7 @@
  * Claude, Copilot, DeepSeek…). Se descarga una sola vez; cada mes se manda solo el reporte
  * mensual y la bitácora.
  */
-export const VERSION_PROMPT = '2'
+export const VERSION_PROMPT = '3'
 
 export const PROMPT_INICIAL = `# Prompt inicial: análisis de mis finanzas personales (app "Finanzas")
 
@@ -41,6 +41,12 @@ Cómo leerlo:
   - Saldo positivo en esa cuenta = me deben; negativo = debo.
   - En el reporte, los gastos de grupos tienen su categoría como cualquier gasto, y además se indica de qué grupo son (columna "Grupo" del detalle, columna "De eso, en grupos" en los gastos por categoría y una tabla por grupo).
   - Por privacidad, el reporte trae el nombre del grupo pero no el de sus miembros.
+- **Deudas 1 a 1 (préstamos con personas):** cada persona figura como "Persona 1", "Persona 2", etc., sin su nombre.
+  - Si le presté plata o le devolví, es una transferencia hacia su cuenta: **no es gasto**. Si me prestó o me devolvió, es una transferencia desde su cuenta: **no es ingreso**.
+  - Si otra persona pagó algo mío, figura como gasto mío desde su cuenta (es un gasto real) y queda como deuda.
+  - Saldo positivo en la cuenta de una persona = me debe; negativo = le debo.
+- **Presupuestos:** puedo tener un tope mensual por categoría o uno general, como monto fijo o como % de lo que ingresó en el mes. Cada mes arranca de cero. El reporte trae el tope, lo gastado y la diferencia.
+- **Etiquetas y eventos:** etiquetas libres (#bariloche) que agrupan movimientos de distintas categorías; un evento es una etiqueta con fechas (por ejemplo, un viaje). El reporte trae los gastos del mes por etiqueta y la columna "Etiquetas" en el detalle.
 - **Inversiones:**
   - Cada compra figura en la moneda en que la pagué.
   - "Moneda extranjera" es la compra de dólares u otras divisas: la cantidad es la cantidad de divisas.
@@ -77,6 +83,8 @@ Te voy a mandar el reporte mensual nuevo y la bitácora actualizada (salvo el pr
 2. **Ingresos, gastos y ahorro** en USD, y el % de ahorro (ahorro ÷ ingresos). Comparalos con los meses anteriores usando la tabla histórica del reporte.
 3. **Gastos:**
    - qué categorías subieron o bajaron, y por qué podría ser;
+   - si tengo presupuestos: cuánto gasté contra lo presupuestado (por ejemplo, "gastaste un 30% menos de lo presupuestado en Salidas") y dónde me excedí;
+   - lo gastado en eventos o etiquetas, si aparecen (por ejemplo, cuánto costó un viaje);
    - gastos fijos frente a variables;
    - gastos chicos y repetidos que suman mucho;
    - el uso de la tarjeta y las cuotas que ya tengo comprometidas.
@@ -90,7 +98,7 @@ Te voy a mandar el reporte mensual nuevo y la bitácora actualizada (salvo el pr
    - con el razonamiento y los números detrás de cada una;
    - pensadas para mi país: su inflación, sus tasas y los instrumentos que tengo disponibles ahí (por ejemplo, en Argentina: plazo fijo, FCI money market y T+1, cauciones, Lecaps, bonos, ON, CEDEARs, dólar MEP, cuentas remuneradas de billeteras virtuales);
    - si podés buscar en internet, usá tasas y cotizaciones actuales y decí la fuente y la fecha; si no podés, aclaralo y **no inventes valores**.
-7. **Alertas:** lo que parezca raro (saldos negativos inesperados, un gasto fuera de lo común, un posible error de carga).
+7. **Alertas:** lo que parezca raro (saldos negativos inesperados, un gasto fuera de lo común, un posible error de carga, deudas con personas que llevan mucho tiempo pendientes).
 8. **Preguntas**, si necesitás algo más para recomendarme mejor.
 
 ## 5. Bitácora: muy importante
@@ -104,7 +112,7 @@ Estructura de la bitácora:
 1. **Perfil:** mis respuestas de la primera vez (incluidos mi país y el estilo de respuesta que elegí), actualizadas si algo cambia.
 2. **Métricas por mes:** una fila por mes con Mes | Ingresos USD | Gastos USD | Ahorro USD | % ahorro | Valor de inversiones USD | Resultado de inversiones % | Dólar MEP | Comentario breve.
    - Copiá los números tal cual figuran en el reporte, sin recalcularlos.
-3. **Objetivos:** el avance de cada uno, mes a mes.
+3. **Objetivos y presupuestos:** el avance de cada objetivo y el cumplimiento de cada presupuesto, mes a mes.
 4. **Recomendaciones y decisiones:** fecha, qué se recomendó o decidí y su estado (pendiente / hecho / descartado).
 5. **Para el próximo análisis:** lo que conviene revisar el mes que viene.
 

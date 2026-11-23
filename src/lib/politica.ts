@@ -7,7 +7,7 @@ export const CAMBIOS_POLITICA: { fecha: string; resumen: string }[] = [
   {
     fecha: '2026-11-23',
     resumen:
-      'Sumamos "Análisis con IA" (opcional): qué datos incluyen los reportes, que solo salen de la app si vos los descargás o copiás, y que lo que le mandes a una IA queda sujeto a sus condiciones. También aclaramos que la demo no pide datos personales y se borra a las 24 horas, y que te vamos a avisar de cada cambio.',
+      'Sumamos "Análisis con IA" (opcional): qué datos incluyen los reportes, que solo salen de la app si vos los descargás o copiás, y que lo que le mandes a una IA queda sujeto a sus condiciones. También aclaramos que la demo no pide datos personales y se borra a las 24 horas, que te vamos a avisar de cada cambio, y sumamos los datos de presupuestos, etiquetas y deudas 1 a 1 (el nombre que le pongas a cada persona, que no va en los reportes para la IA).',
   },
 ]
 

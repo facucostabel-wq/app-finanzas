@@ -23,6 +23,9 @@ const TABLAS = [
   'cierre_precios',
   'cierre_objetivos',
   'valuaciones',
+  'presupuestos',
+  'etiquetas',
+  'etiquetado',
 ] as const
 
 type Fila = Record<string, unknown>

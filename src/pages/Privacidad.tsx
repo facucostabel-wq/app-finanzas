@@ -31,8 +31,12 @@ export default function Privacidad() {
           siquiera el responsable.
         </li>
         <li>
-          <b>Lo que cargás:</b> movimientos (montos, fechas, categorías, notas), cuentas y saldos, cuotas e
-          inversiones.
+          <b>Lo que cargás:</b> movimientos (montos, fechas, categorías, notas, etiquetas), cuentas y saldos, cuotas,
+          inversiones, objetivos y presupuestos.
+        </li>
+        <li>
+          <b>Deudas 1 a 1:</b> el nombre (o apodo) que le pongas a cada persona con la que registrás un préstamo. Es un
+          dato tuyo: la persona no recibe nada ni tiene acceso. Usá solo lo necesario para reconocerla.
         </li>
         <li>
           <b>Grupos:</b> el nombre con el que figurás, los gastos, cómo se dividen y los pagos.
@@ -101,8 +105,9 @@ export default function Privacidad() {
       </p>
       <ul>
         <li>
-          Los reportes incluyen montos, fechas, categorías, cuentas, inversiones, objetivos y el nombre de tus grupos. No
-          incluyen las notas de los movimientos, los nombres de los miembros de tus grupos ni tu email.
+          Los reportes incluyen montos, fechas, categorías, cuentas, inversiones, objetivos, presupuestos, tus etiquetas y
+          el nombre de tus grupos. No incluyen las notas de los movimientos, los nombres de los miembros de tus grupos ni
+          los de las personas de tus deudas (van como “Persona 1”, “Persona 2”), ni tu email.
         </li>
         <li>
           La app no se conecta con ninguna IA: los archivos se generan en tu dispositivo y solo salen si vos los descargás

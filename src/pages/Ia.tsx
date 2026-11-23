@@ -60,10 +60,10 @@ export default function Ia() {
       <h2>Qué se comparte</h2>
       <ul>
         <li>
-          <strong>Sí:</strong> montos, fechas, categorías, cuentas, inversiones, objetivos y el nombre de tus grupos.
+          <strong>Sí:</strong> montos, fechas, categorías, cuentas, inversiones, objetivos, presupuestos, tus etiquetas y el nombre de tus grupos.
         </li>
         <li>
-          <strong>No:</strong> las notas de los movimientos, los nombres de los miembros de tus grupos ni tu email.
+          <strong>No:</strong> las notas de los movimientos, los nombres de los miembros de tus grupos, los de las personas de tus deudas (van como “Persona 1”, “Persona 2”) ni tu email.
         </li>
         <li>
           Nada sale de la app hasta que vos descargues o copies un archivo y se lo mandes a la IA. Esa IA es de otra empresa: lo que le
